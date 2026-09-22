@@ -16,17 +16,26 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.solana.mobile.expo.template"
+      "bundleIdentifier": "com.faitharcade.faithrun"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#08090D"
       },
-      "package": "com.solana.mobile.expo.template"
+      "package": "com.faitharcade.faithrun"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0875e71b-866c-416c-816e-39aaa829e091"
+      }
+    },
+    "owner": "wizzclint",
+    "plugins": [
+      "expo-audio"
+    ]
   }
 }

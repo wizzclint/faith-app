@@ -6,6 +6,8 @@ module.exports = function(api) {
       production: {
         plugins: ['react-native-paper/babel'],
       },
-    },  
+    },
+    // react-native-reanimated/plugin must always be listed last.
+    plugins: ['react-native-reanimated/plugin'],
   };
 };

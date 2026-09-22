@@ -1,6 +1,6 @@
 import { View } from "react-native";
-import { useTheme } from "react-native-paper";
 import { useAuthorization } from "../../utils/useAuthorization";
+import { TransactionHistoryList } from "./transaction-history";
 import {
   AccountBalance,
   AccountButtonGroup,
@@ -13,7 +13,6 @@ export function AccountDetailFeature() {
   if (!selectedAccount) {
     return null;
   }
-  const theme = useTheme();
 
   return (
     <>
@@ -21,7 +20,10 @@ export function AccountDetailFeature() {
         <AccountBalance address={selectedAccount.publicKey} />
         <AccountButtonGroup address={selectedAccount.publicKey} />
       </View>
-      <View style={{ marginTop: 48 }}>
+      <View style={{ marginTop: 32 }}>
+        <TransactionHistoryList address={selectedAccount.publicKey} />
+      </View>
+      <View style={{ marginTop: 32 }}>
         <AccountTokens address={selectedAccount.publicKey} />
       </View>
     </>

@@ -6,7 +6,7 @@ import {
   useRequestAirdrop,
   useTransferSol,
 } from "./account-data-access";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Text as RNText } from "react-native";
 import {
   Text,
   useTheme,
@@ -16,6 +16,9 @@ import {
   TextInput,
 } from "react-native-paper";
 import { useState, useMemo } from "react";
+import { colors } from "../../design/colors";
+import { radius } from "../../design/radius";
+import { spacing } from "../../design/spacing";
 import { ellipsify } from "../../utils/ellipsify";
 import { AppModal } from "../ui/app-modal";
 
@@ -26,14 +29,26 @@ function lamportsToSol(balance: number) {
 export function AccountBalance({ address }: { address: PublicKey }) {
   const query = useGetBalance({ address });
   return (
-    <>
-      <View style={styles.accountBalance}>
-        <Text variant="titleMedium">Current Balance</Text>
-        <Text variant="displayLarge">
-          {query.data ? lamportsToSol(query.data) : "..."} SOL
-        </Text>
+    <View style={styles.balanceCard}>
+      <RNText style={styles.balanceLabel}>AVAILABLE BALANCE (DEVNET)</RNText>
+      <RNText style={styles.balanceValue}>
+        ◎ {query.data !== undefined ? lamportsToSol(query.data) : "…"}
+      </RNText>
+      <View style={styles.balanceSubRow}>
+        <View style={styles.balanceSub}>
+          <RNText style={styles.balanceSubLabel}>GAME BALANCE</RNText>
+          <RNText style={styles.balanceSubValue}>◎ 0.000</RNText>
+        </View>
+        <View style={styles.balanceSub}>
+          <RNText style={styles.balanceSubLabel}>PENDING REWARDS</RNText>
+          <RNText style={styles.balanceSubValue}>◎ 0.000</RNText>
+        </View>
       </View>
-    </>
+      <RNText style={styles.balanceFootnote}>
+        Game balance and rewards need the backend (Phase 6) — this is real devnet
+        wallet balance only, nothing fabricated.
+      </RNText>
+    </View>
   );
 }
 
@@ -298,5 +313,54 @@ const styles = StyleSheet.create({
   error: {
     color: "red",
     padding: 8,
+  },
+  balanceCard: {
+    width: "100%",
+    backgroundColor: colors.surface,
+    borderRadius: radius.largeCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    alignItems: "center",
+  },
+  balanceLabel: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  balanceValue: {
+    color: colors.textPrimary,
+    fontSize: 36,
+    fontWeight: "800",
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  balanceSubRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginBottom: spacing.md,
+  },
+  balanceSub: {
+    alignItems: "center",
+  },
+  balanceSubLabel: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  balanceSubValue: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  balanceFootnote: {
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 16,
   },
 });

@@ -35,6 +35,8 @@ import {
 type RootStackParamList = {
   Home: undefined;
   Settings: undefined;
+  Game: undefined;
+  Missions: undefined;
   // 🔥 Your screens go here
 };
 
@@ -56,6 +58,16 @@ const AppStack = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="Settings" component={Screens.SettingsScreen} />
+      <Stack.Screen
+        name="Game"
+        component={Screens.GameScreen}
+        options={{ headerShown: false, animation: "fade" }}
+      />
+      <Stack.Screen
+        name="Missions"
+        component={Screens.MissionsScreen}
+        options={{ title: "Missions" }}
+      />
       {/** 🔥 Your screens go here */}
     </Stack.Navigator>
   );

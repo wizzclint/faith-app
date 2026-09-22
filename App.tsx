@@ -2,6 +2,7 @@
 import "./src/polyfills";
 
 import { StyleSheet, useColorScheme } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ConnectionProvider } from "./src/utils/ConnectionProvider";
@@ -45,33 +46,35 @@ export default function App() {
     },
   };
   return (
-    <QueryClientProvider client={queryClient}>
-      <ClusterProvider>
-        <ConnectionProvider config={{ commitment: "processed" }}>
-          <SafeAreaView
-            style={[
-              styles.shell,
-              {
-                backgroundColor:
-                  colorScheme === "dark"
-                    ? MD3DarkTheme.colors.background
-                    : MD3LightTheme.colors.background,
-              },
-            ]}
-          >
-            <PaperProvider
-              theme={
-                colorScheme === "dark"
-                  ? CombinedDarkTheme
-                  : CombinedDefaultTheme
-              }
+    <GestureHandlerRootView style={styles.shell}>
+      <QueryClientProvider client={queryClient}>
+        <ClusterProvider>
+          <ConnectionProvider config={{ commitment: "processed" }}>
+            <SafeAreaView
+              style={[
+                styles.shell,
+                {
+                  backgroundColor:
+                    colorScheme === "dark"
+                      ? MD3DarkTheme.colors.background
+                      : MD3LightTheme.colors.background,
+                },
+              ]}
             >
-              <AppNavigator />
-            </PaperProvider>
-          </SafeAreaView>
-        </ConnectionProvider>
-      </ClusterProvider>
-    </QueryClientProvider>
+              <PaperProvider
+                theme={
+                  colorScheme === "dark"
+                    ? CombinedDarkTheme
+                    : CombinedDefaultTheme
+                }
+              >
+                <AppNavigator />
+              </PaperProvider>
+            </SafeAreaView>
+          </ConnectionProvider>
+        </ClusterProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

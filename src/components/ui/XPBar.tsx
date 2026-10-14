@@ -1,7 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from "../../design/colors";
-import { radius } from "../../design/radius";
 
 interface XPBarProps {
   current: number;
@@ -26,11 +25,10 @@ export function XPBar({ current, required, height = 8 }: XPBarProps) {
 const styles = StyleSheet.create({
   track: {
     width: "100%",
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.track,
     overflow: "hidden",
   },
   fill: {
     backgroundColor: colors.accent,
-    borderRadius: radius.smallCard,
   },
 });

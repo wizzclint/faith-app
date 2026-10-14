@@ -5,7 +5,6 @@ import { colors } from "../../design/colors";
 import { PIXELS_PER_UNIT } from "../../game/constants";
 import { CoinSlot } from "../../game/types";
 
-const COIN_RADIUS = 14;
 const OFFSCREEN = -2000;
 
 interface CoinSpriteProps {
@@ -17,26 +16,29 @@ interface CoinSpriteProps {
 }
 
 /**
- * Flat solid fills, hidden by moving off-screen when inactive — the earlier
- * version used a radial gradient + blur + Group opacity to fake a glowing
- * orb, which turned out invisible on a real device (confirmed: score still
- * climbed normally, so spawning/collision were always fine — only that
- * render path was broken). This uses only the same plain Circle+color
- * primitives already proven to render correctly (player sprite, ground
- * line). Can revisit the glow effect later once this baseline is confirmed.
+ * A glowing orb built from stacked flat circles — no gradient, blur or Group
+ * opacity, all of which rendered invisible on a real device. Hidden by
+ * translating off-screen when inactive. Lane and y are read together in one
+ * distance-driven worklet so the sprite always sits where the engine has it.
  */
 export function CoinSprite({ coins, distance, index, laneX, topY }: CoinSpriteProps) {
-  const cy = useDerivedValue(() => {
+  const transform = useDerivedValue(() => {
     const slot = coins.value[index];
-    if (slot.active !== 1) return OFFSCREEN;
-    return topY + (distance.value - slot.spawnDistance) * PIXELS_PER_UNIT;
+    if (slot.active !== 1) return [{ translateX: OFFSCREEN }, { translateY: OFFSCREEN }];
+    return [
+      { translateX: laneX[slot.lane] ?? laneX[1] },
+      { translateY: topY + (distance.value - slot.spawnDistance) * PIXELS_PER_UNIT },
+    ];
   });
-  const cx = useDerivedValue(() => laneX[coins.value[index].lane] ?? laneX[1]);
 
   return (
-    <Group>
-      <Circle cx={cx} cy={cy} r={COIN_RADIUS} color={colors.accent} />
-      <Circle cx={cx} cy={cy} r={COIN_RADIUS * 0.55} color={colors.textPrimary} />
+    <Group transform={transform}>
+      <Circle cx={0} cy={0} r={23} color="rgba(0,226,174,0.14)" />
+      <Circle cx={0} cy={0} r={18} color="rgba(0,226,174,0.26)" />
+      <Circle cx={0} cy={0} r={14} color={colors.accent} />
+      <Circle cx={0} cy={0} r={10} color="#0B5A4B" />
+      <Circle cx={0} cy={0} r={7} color={colors.accentBright} />
+      <Circle cx={0} cy={0} r={3.5} color={colors.textPrimary} />
     </Group>
   );
 }

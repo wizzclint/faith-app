@@ -1,12 +1,15 @@
-import { Button, IconButton, Menu, useTheme } from "react-native-paper";
+import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
+import { Menu } from "react-native-paper";
 import { Account, useAuthorization } from "../../utils/useAuthorization";
 import { useMobileWallet } from "../../utils/useMobileWallet";
 import { useNavigation } from "@react-navigation/native";
 import { ellipsify } from "../../utils/ellipsify";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Linking } from "react-native";
+import { Linking, Pressable, StyleSheet, Text } from "react-native";
+import { colors } from "../../design/colors";
 import { useCluster } from "../cluster/cluster-data-access";
+import { useConnectWallet } from "../sign-in/sign-in-ui";
 
 export function TopBarWalletButton({
   selectedAccount,
@@ -15,33 +18,69 @@ export function TopBarWalletButton({
   selectedAccount: Account | null;
   openMenu: () => void;
 }) {
-  const { connect } = useMobileWallet();
+  const { connect } = useConnectWallet();
   return (
-    <Button
-      icon="wallet"
-      mode="contained-tonal"
-      style={{ alignSelf: "center" }}
+    <Pressable
+      style={({ pressed }) => [styles.walletPill, pressed && styles.pressed]}
       onPress={selectedAccount ? openMenu : connect}
     >
-      {selectedAccount
-        ? ellipsify(selectedAccount.publicKey.toBase58())
-        : "Connect"}
-    </Button>
+      <MaterialCommunityIcon name="wallet" size={18} color={colors.textPrimary} />
+      <Text style={styles.walletLabel}>
+        {selectedAccount
+          ? ellipsify(selectedAccount.publicKey.toBase58())
+          : "Connect"}
+      </Text>
+    </Pressable>
   );
 }
 
 export function TopBarSettingsButton() {
   const navigation = useNavigation();
   return (
-    <IconButton
-      icon="cog"
-      mode="contained-tonal"
+    <Pressable
+      style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+      hitSlop={6}
       onPress={() => {
         navigation.navigate("Settings");
       }}
-    />
+    >
+      <MaterialCommunityIcon name="cog" size={22} color={colors.textPrimary} />
+    </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  walletPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 21,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  walletLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  roundButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+});
 
 export function TopBarWalletMenu() {
   const { selectedAccount } = useAuthorization();
@@ -91,8 +130,9 @@ export function TopBarWalletMenu() {
       />
       <Menu.Item
         onPress={async () => {
-          await disconnect();
           closeMenu();
+          // Backing out in the wallet just leaves it connected.
+          await disconnect().catch(() => {});
         }}
         title="Disconnect"
         leadingIcon="link-off"

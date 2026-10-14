@@ -6,6 +6,7 @@
  * reader.
  */
 let currentToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
 
 export function setAuthToken(token: string | null) {
   currentToken = token;
@@ -13,4 +14,13 @@ export function setAuthToken(token: string | null) {
 
 export function getAuthToken(): string | null {
   return currentToken;
+}
+
+/** authStore registers its sign-out here, so an expired token returns the UI to "sync again". */
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler;
+}
+
+export function notifyUnauthorized() {
+  onUnauthorized?.();
 }

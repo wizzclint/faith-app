@@ -1,7 +1,8 @@
 import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { BottomTabBarProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React, { useEffect } from "react";
-import { useTheme } from "react-native-paper";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MatchAlert } from "../components/compete/MatchAlert";
 import { TopBar } from "../components/top-bar/top-bar-feature";
 import { colors } from "../design/colors";
 import { CompeteScreen } from "../screens/CompeteScreen";
@@ -10,6 +11,16 @@ import { LeaderboardScreen } from "../screens/LeaderboardScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
+
+type IconName = React.ComponentProps<typeof MaterialCommunityIcon>["name"];
+
+const TAB_ICONS: Record<string, { active: IconName; inactive: IconName }> = {
+  Home: { active: "home", inactive: "home-outline" },
+  Run: { active: "lightning-bolt", inactive: "lightning-bolt" },
+  Compete: { active: "trophy", inactive: "trophy-outline" },
+  Rank: { active: "podium", inactive: "podium" },
+  Profile: { active: "account-circle", inactive: "account-circle-outline" },
+};
 
 /**
  * "Run" isn't a real tab content area — the game is a full-screen, nav-free
@@ -24,48 +35,68 @@ function RunTabFallback({ navigation }: { navigation: { navigate: (screen: strin
   return null;
 }
 
+/** Rounded neon tab bar: icon + label per tab, with a glowing line under the active one. */
+function FaithTabBar({ state, navigation }: BottomTabBarProps) {
+  return (
+    <View style={styles.tabBarWrap}>
+      <View style={styles.tabBar}>
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const icons = TAB_ICONS[route.name];
+          const color = focused ? colors.accent : colors.textSecondary;
+
+          const onPress = () => {
+            // Emitting tabPress keeps per-tab listeners working (the Run tab relies on it).
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              style={styles.tabItem}
+              onPress={onPress}
+              accessibilityRole="button"
+              accessibilityState={focused ? { selected: true } : {}}
+              accessibilityLabel={route.name}
+            >
+              <MaterialCommunityIcon
+                name={icons ? (focused ? icons.active : icons.inactive) : "circle"}
+                size={route.name === "Run" ? 30 : 26}
+                color={color}
+              />
+              <Text style={[styles.tabLabel, { color }]}>{route.name}</Text>
+              {focused && <View style={styles.tabIndicator} />}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /**
  * Main navigator with a bottom tab bar: HOME / RUN / COMPETE / RANK / PROFILE,
- * matching the FAITH RUN spec's nav (section 22) — RUN gets stronger visual
- * emphasis since it's the primary action.
+ * matching the FAITH RUN spec's nav (section 22).
  */
 export function HomeNavigator() {
-  const theme = useTheme();
-
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        header: () => <TopBar />,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarIcon: ({ focused, color, size }) => {
-          const iconSize = route.name === "Run" ? size * 1.3 : size;
-          const iconName = (() => {
-            switch (route.name) {
-              case "Home":
-                return focused ? "home" : "home-outline";
-              case "Run":
-                return "lightning-bolt";
-              case "Compete":
-                return focused ? "trophy" : "trophy-outline";
-              case "Rank":
-                return "podium";
-              case "Profile":
-                return focused ? "account-circle" : "account-circle-outline";
-              default:
-                return "circle";
-            }
-          })();
-          return (
-            <MaterialCommunityIcon
-              name={iconName as any}
-              size={iconSize}
-              color={route.name === "Run" ? colors.accent : color}
-            />
-          );
-        },
-      })}
+      tabBar={(props) => <FaithTabBar {...props} />}
+      screenOptions={{
+        header: () => (
+          <>
+            <TopBar />
+            <MatchAlert />
+          </>
+        ),
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen
@@ -84,3 +115,39 @@ export function HomeNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  // The root SafeAreaView already clears the system gesture area, so no bottom inset is added here.
+  tabBarWrap: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 8,
+  },
+  tabBar: {
+    flexDirection: "row",
+    height: 68,
+    borderRadius: 30,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  tabIndicator: {
+    position: "absolute",
+    bottom: 0,
+    width: 44,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
+  },
+});

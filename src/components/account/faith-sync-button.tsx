@@ -25,7 +25,7 @@ export function FaithSyncButton() {
   if (status === "authenticated") {
     return (
       <View style={styles.row}>
-        <Text style={styles.synced}>✓ Synced with FAITH backend</Text>
+        <Text style={styles.synced}>✓ Synced. Your scores now count on the leaderboard.</Text>
       </View>
     );
   }

@@ -1,320 +1,250 @@
+import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import {
-  useGetBalance,
-  useGetTokenAccountBalance,
-  useGetTokenAccounts,
-  useRequestAirdrop,
-  useTransferSol,
-} from "./account-data-access";
-import { View, StyleSheet, ScrollView, Text as RNText } from "react-native";
-import {
-  Text,
-  useTheme,
-  Button,
-  ActivityIndicator,
-  DataTable,
-  TextInput,
-} from "react-native-paper";
-import { useState, useMemo } from "react";
+import * as Clipboard from "expo-clipboard";
+import React, { useState } from "react";
+import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../design/colors";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
-import { ellipsify } from "../../utils/ellipsify";
-import { AppModal } from "../ui/app-modal";
+import { api, ApiError } from "../../services/api/client";
+import { formatSol } from "../../services/competition/format";
+import {
+  useRefreshCompetitive,
+  useRewards,
+  useServerConfig,
+} from "../../services/competition/hooks";
+import { useAuthStore } from "../../store/authStore";
+import { FaithButton } from "../ui/FaithButton";
+import { useGetBalance, useRequestAirdrop } from "./account-data-access";
 
-function lamportsToSol(balance: number) {
-  return Math.round((balance / LAMPORTS_PER_SOL) * 100000) / 100000;
+const FAUCET_URL = "https://faucet.solana.com";
+
+function formatWalletSol(lamports: number): string {
+  return `◎ ${Math.round((lamports / LAMPORTS_PER_SOL) * 100000) / 100000}`;
 }
 
-export function AccountBalance({ address }: { address: PublicKey }) {
-  const query = useGetBalance({ address });
+type IconName = React.ComponentProps<typeof MaterialCommunityIcon>["name"];
+
+function ActionButton({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <View style={styles.balanceCard}>
-      <RNText style={styles.balanceLabel}>AVAILABLE BALANCE (DEVNET)</RNText>
-      <RNText style={styles.balanceValue}>
-        ◎ {query.data !== undefined ? lamportsToSol(query.data) : "…"}
-      </RNText>
-      <View style={styles.balanceSubRow}>
-        <View style={styles.balanceSub}>
-          <RNText style={styles.balanceSubLabel}>GAME BALANCE</RNText>
-          <RNText style={styles.balanceSubValue}>◎ 0.000</RNText>
+    <Pressable
+      style={({ pressed }) => [styles.action, pressed && styles.pressed, disabled && styles.disabled]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+    >
+      <MaterialCommunityIcon name={icon} size={20} color={colors.accent} />
+      <Text style={styles.actionLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The money picture, in the spec's terms (section 6):
+ *  - available balance: SOL in the connected wallet, read from the chain
+ *  - game balance: stakes and entry fees in matches that haven't finished
+ *  - pending rewards: prizes and refunds waiting to be withdrawn
+ * Server figures only appear once synced — a dash until then, never a made-up zero.
+ */
+export function WalletSummary({ address }: { address: PublicKey }) {
+  const balance = useGetBalance({ address });
+  const synced = useAuthStore((s) => s.status === "authenticated");
+  const { data: rewards } = useRewards();
+  const { data: config } = useServerConfig();
+  const refresh = useRefreshCompetitive();
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [message, setMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
+
+  const cluster = config?.cluster ?? "devnet";
+  const amount = (lamports: number | undefined) =>
+    lamports === undefined ? "—" : formatSol(lamports);
+  const claimable = (rewards?.rewards ?? []).filter((reward) => reward.status !== "PAID");
+
+  /** Sends every pending prize and refund to the wallet, one payout each. */
+  const withdrawAll = async () => {
+    setWithdrawing(true);
+    setMessage(null);
+    let sent = 0;
+    let stillSending = 0;
+    let problem: string | null = null;
+    for (const reward of claimable) {
+      try {
+        const { reward: result } = await api.claimReward(reward.id);
+        if (result.status === "PAID") sent += result.lamports - result.networkFeeLamports;
+        else stillSending += 1;
+      } catch (err) {
+        problem =
+          err instanceof ApiError ? err.message : "Couldn't reach the FAITH servers. Try again.";
+      }
+    }
+    if (problem) setMessage({ text: problem, tone: "error" });
+    else if (stillSending > 0) {
+      setMessage({ text: "Your payout is on its way. It can take a minute to show in your wallet.", tone: "info" });
+    } else if (sent > 0) {
+      setMessage({ text: `Sent ${formatSol(sent)} to your wallet.`, tone: "info" });
+    }
+    await refresh();
+    balance.refetch();
+    setWithdrawing(false);
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.label}>AVAILABLE BALANCE · {cluster.toUpperCase()}</Text>
+      <Text style={styles.balance}>
+        {balance.data !== undefined ? formatWalletSol(balance.data) : balance.isError ? "—" : "…"}
+      </Text>
+
+      <View style={styles.subRow}>
+        <View style={styles.sub}>
+          <Text style={styles.subLabel}>GAME BALANCE</Text>
+          <Text style={styles.subValue}>{amount(rewards?.lockedLamports)}</Text>
         </View>
-        <View style={styles.balanceSub}>
-          <RNText style={styles.balanceSubLabel}>PENDING REWARDS</RNText>
-          <RNText style={styles.balanceSubValue}>◎ 0.000</RNText>
+        <View style={styles.sub}>
+          <Text style={styles.subLabel}>PENDING REWARDS</Text>
+          <Text style={[styles.subValue, (rewards?.pendingLamports ?? 0) > 0 && styles.subValueHot]}>
+            {amount(rewards?.pendingLamports)}
+          </Text>
+        </View>
+        <View style={styles.sub}>
+          <Text style={styles.subLabel}>TOTAL WON</Text>
+          <Text style={styles.subValue}>{amount(rewards?.earnedLamports)}</Text>
         </View>
       </View>
-      <RNText style={styles.balanceFootnote}>
-        Game balance and rewards need the backend (Phase 6) — this is real devnet
-        wallet balance only, nothing fabricated.
-      </RNText>
+
+      <View style={styles.actions}>
+        <ActionButton icon="tray-arrow-down" label="DEPOSIT" onPress={() => setDepositOpen(true)} />
+        <ActionButton
+          icon="tray-arrow-up"
+          label={withdrawing ? "SENDING…" : "WITHDRAW"}
+          onPress={withdrawAll}
+          disabled={withdrawing || claimable.length === 0}
+        />
+      </View>
+
+      {message && (
+        <Text style={[styles.message, message.tone === "error" && styles.messageError]}>
+          {message.text}
+        </Text>
+      )}
+
+      <Text style={styles.footnote}>
+        {!synced
+          ? "Tap SYNC WITH FAITH above to see your game balance and rewards."
+          : claimable.length > 0
+            ? "WITHDRAW sends your pending prizes and refunds to this wallet. Solana's small network fee comes out of each payout."
+            : "Stakes and entry fees are paid straight from this wallet. Prizes and refunds wait under Pending Rewards until you withdraw them."}
+        {cluster !== "mainnet-beta" ? ` ${cluster} SOL is test money with no real-world value.` : ""}
+      </Text>
+
+      <DepositModal
+        visible={depositOpen}
+        onClose={() => setDepositOpen(false)}
+        address={address}
+        cluster={cluster}
+      />
     </View>
   );
 }
 
-export function AccountButtonGroup({ address }: { address: PublicKey }) {
-  const requestAirdrop = useRequestAirdrop({ address });
-  const [showAirdropModal, setShowAirdropModal] = useState(false);
-  const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-
-  return (
-    <>
-      <View style={styles.accountButtonGroup}>
-        <AirdropRequestModal
-          hide={() => setShowAirdropModal(false)}
-          show={showAirdropModal}
-          address={address}
-        />
-        <TransferSolModal
-          hide={() => setShowSendModal(false)}
-          show={showSendModal}
-          address={address}
-        />
-        <ReceiveSolModal
-          hide={() => setShowReceiveModal(false)}
-          show={showReceiveModal}
-          address={address}
-        />
-        <Button
-          mode="contained"
-          disabled={requestAirdrop.isPending}
-          onPress={() => {
-            setShowAirdropModal(true);
-          }}
-        >
-          Airdrop
-        </Button>
-        <Button
-          mode="contained"
-          onPress={() => setShowSendModal(true)}
-          style={{ marginLeft: 6 }}
-        >
-          Send
-        </Button>
-        <Button
-          mode="contained"
-          onPress={() => setShowReceiveModal(true)}
-          style={{ marginLeft: 6 }}
-        >
-          Receive
-        </Button>
-      </View>
-    </>
-  );
-}
-
-export function AirdropRequestModal({
-  hide,
-  show,
+/**
+ * There is no separate game account to deposit into: stakes and entry fees
+ * are paid from the connected wallet when you enter. So depositing means
+ * getting SOL into that wallet, which on devnet is free test SOL.
+ */
+function DepositModal({
+  visible,
+  onClose,
   address,
+  cluster,
 }: {
-  hide: () => void;
-  show: boolean;
+  visible: boolean;
+  onClose: () => void;
   address: PublicKey;
+  cluster: string;
 }) {
-  const requestAirdrop = useRequestAirdrop({ address });
+  const airdrop = useRequestAirdrop({ address });
+  const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState<{ text: string; tone: "info" | "error" } | null>(null);
+  const testNetwork = cluster === "devnet" || cluster === "testnet";
+  const base58 = address.toBase58();
+
+  const copy = async () => {
+    await Clipboard.setStringAsync(base58);
+    setCopied(true);
+  };
+
+  const requestTestSol = async () => {
+    setNote(null);
+    try {
+      await airdrop.mutateAsync(1);
+      setNote({ text: "1 test SOL is in your wallet.", tone: "info" });
+    } catch {
+      setNote({
+        text: "The devnet faucet is busy right now (it limits how often it pays out). Try again later, or copy your address into faucet.solana.com.",
+        tone: "error",
+      });
+    }
+  };
 
   return (
-    <AppModal
-      title="Request Airdrop"
-      hide={hide}
-      show={show}
-      submit={() => {
-        requestAirdrop.mutateAsync(1).catch((err) => console.log(err));
-      }}
-      submitLabel="Request"
-      submitDisabled={requestAirdrop.isPending}
-    >
-      <View style={{ padding: 4 }}>
-        <Text>
-          Request an airdrop of 1 SOL to your connected wallet account.
-        </Text>
-      </View>
-    </AppModal>
-  );
-}
-
-export function TransferSolModal({
-  hide,
-  show,
-  address,
-}: {
-  hide: () => void;
-  show: boolean;
-  address: PublicKey;
-}) {
-  const transferSol = useTransferSol({ address });
-  const [destinationAddress, setDestinationAddress] = useState("");
-  const [amount, setAmount] = useState("");
-  return (
-    <AppModal
-      title="Send SOL"
-      hide={hide}
-      show={show}
-      submit={() => {
-        transferSol
-          .mutateAsync({
-            destination: new PublicKey(destinationAddress),
-            amount: parseFloat(amount),
-          })
-          .then(() => hide());
-      }}
-      submitLabel="Send"
-      submitDisabled={!destinationAddress || !amount}
-    >
-      <View style={{ padding: 20 }}>
-        <TextInput
-          label="Amount (SOL)"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          mode="outlined"
-          style={{ marginBottom: 20 }}
-        />
-        <TextInput
-          label="Destination Address"
-          value={destinationAddress}
-          onChangeText={setDestinationAddress}
-          mode="outlined"
-        />
-      </View>
-    </AppModal>
-  );
-}
-
-export function ReceiveSolModal({
-  hide,
-  show,
-  address,
-}: {
-  hide: () => void;
-  show: boolean;
-  address: PublicKey;
-}) {
-  return (
-    <AppModal title="Receive assets" hide={hide} show={show}>
-      <View style={{ padding: 4 }}>
-        <Text selectable={true} variant="bodyMedium">
-          You can receive assets by sending them to your public key:{"\n\n"}
-          <Text variant="bodyLarge">{address.toBase58()}</Text>
-        </Text>
-      </View>
-    </AppModal>
-  );
-}
-
-export function AccountTokens({ address }: { address: PublicKey }) {
-  let query = useGetTokenAccounts({ address });
-  const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 3; // Items per page
-  const theme = useTheme();
-
-  const items = useMemo(() => {
-    const start = currentPage * itemsPerPage;
-    const end = start + itemsPerPage;
-    return query.data?.slice(start, end) ?? [];
-  }, [query.data, currentPage, itemsPerPage]);
-
-  // Calculate the total number of pages
-  const numberOfPages = useMemo(() => {
-    return Math.ceil((query.data?.length ?? 0) / itemsPerPage);
-  }, [query.data, itemsPerPage]);
-
-  return (
-    <>
-      <Text
-        variant="titleMedium"
-        style={{
-          color: theme.colors.onSurfaceVariant,
-        }}
-      >
-        Token Accounts
-      </Text>
-      <ScrollView>
-        {query.isLoading && <ActivityIndicator animating={true} />}
-        {query.isError && (
-          <Text
-            style={{
-              padding: 8,
-              backgroundColor: theme.colors.errorContainer,
-              color: theme.colors.error,
-            }}
-          >
-            Error: {query.error?.message.toString()}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => {}}>
+          <Text style={styles.sheetTitle}>DEPOSIT</Text>
+          <Text style={styles.sheetBody}>
+            FAITH plays from the wallet you connected — stakes and entry fees are paid from it when
+            you join. To add SOL, send it to this address:
           </Text>
-        )}
-        {query.isSuccess && (
-          <>
-            <DataTable>
-              <DataTable.Header>
-                <DataTable.Title>Public Key</DataTable.Title>
-                <DataTable.Title>Mint</DataTable.Title>
-                <DataTable.Title numeric>Balance</DataTable.Title>
-              </DataTable.Header>
+          <Pressable style={styles.addressBox} onPress={copy}>
+            <Text style={styles.address} selectable>
+              {base58}
+            </Text>
+            <Text style={styles.copy}>{copied ? "✓ COPIED" : "TAP TO COPY"}</Text>
+          </Pressable>
 
-              {query.data.length === 0 && (
-                <View style={{ marginTop: 12 }}>
-                  <Text variant="bodyMedium">No token accounts found.</Text>
-                </View>
-              )}
-
-              {items?.map(({ account, pubkey }) => (
-                <DataTable.Row key={pubkey.toString()}>
-                  <DataTable.Cell>
-                    {ellipsify(pubkey.toString())}
-                  </DataTable.Cell>
-                  <DataTable.Cell>
-                    {ellipsify(account.data.parsed.info.mint)}
-                  </DataTable.Cell>
-                  <DataTable.Cell numeric>
-                    <AccountTokenBalance address={pubkey} />
-                  </DataTable.Cell>
-                </DataTable.Row>
-              ))}
-
-              {(query.data?.length ?? 0) > 3 && (
-                <DataTable.Pagination
-                  page={currentPage}
-                  numberOfPages={numberOfPages}
-                  onPageChange={(page) => setCurrentPage(page)}
-                  label={`${currentPage + 1} of ${numberOfPages}`}
-                  numberOfItemsPerPage={itemsPerPage}
-                  selectPageDropdownLabel={"Rows per page"}
-                />
-              )}
-            </DataTable>
-          </>
-        )}
-      </ScrollView>
-    </>
-  );
-}
-
-export function AccountTokenBalance({ address }: { address: PublicKey }) {
-  const query = useGetTokenAccountBalance({ address });
-  return query.isLoading ? (
-    <ActivityIndicator animating={true} />
-  ) : query.data ? (
-    <Text>{query.data?.value.uiAmount}</Text>
-  ) : (
-    <Text>Error</Text>
+          {testNetwork && (
+            <>
+              <Text style={styles.sheetBody}>
+                On {cluster}, SOL is free test money. Get some straight away:
+              </Text>
+              <FaithButton
+                label={airdrop.isPending ? "ASKING THE FAUCET…" : "GET 1 TEST SOL"}
+                onPress={requestTestSol}
+                disabled={airdrop.isPending}
+              />
+              <FaithButton
+                label="OPEN FAUCET.SOLANA.COM"
+                variant="secondary"
+                onPress={() => Linking.openURL(FAUCET_URL)}
+              />
+            </>
+          )}
+          {note && (
+            <Text style={[styles.message, note.tone === "error" && styles.messageError]}>
+              {note.text}
+            </Text>
+          )}
+          <FaithButton label="CLOSE" variant="tertiary" onPress={onClose} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  accountBalance: {
-    marginTop: 12,
-  },
-  accountButtonGroup: {
-    paddingVertical: 4,
-    flexDirection: "row",
-  },
-  error: {
-    color: "red",
-    padding: 8,
-  },
-  balanceCard: {
+  card: {
     width: "100%",
     backgroundColor: colors.surface,
     borderRadius: radius.largeCard,
@@ -323,44 +253,132 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     alignItems: "center",
   },
-  balanceLabel: {
+  label: {
     color: colors.textSecondary,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1,
   },
-  balanceValue: {
+  balance: {
     color: colors.textPrimary,
     fontSize: 36,
     fontWeight: "800",
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
-  balanceSubRow: {
+  subRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
     width: "100%",
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  balanceSub: {
+  sub: {
+    flex: 1,
     alignItems: "center",
   },
-  balanceSubLabel: {
+  subLabel: {
     color: colors.textMuted,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.5,
+    textAlign: "center",
   },
-  balanceSubValue: {
+  subValue: {
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: "700",
     marginTop: 2,
   },
-  balanceFootnote: {
+  subValueHot: {
+    color: colors.accent,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    width: "100%",
+  },
+  action: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 48,
+    borderRadius: radius.button,
+    backgroundColor: colors.accentDeep,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  actionLabel: {
+    color: colors.accentBright,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  pressed: {
+    opacity: 0.75,
+  },
+  disabled: {
+    opacity: 0.4,
+  },
+  message: {
+    color: colors.accent,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
+  messageError: {
+    color: colors.danger,
+  },
+  footnote: {
     color: colors.textMuted,
     fontSize: 11,
-    textAlign: "center",
     lineHeight: 16,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(3,8,11,0.8)",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  sheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.modal,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  sheetTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+  sheetBody: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  addressBox: {
+    backgroundColor: colors.background,
+    borderRadius: radius.smallCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: 6,
+  },
+  address: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  copy: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.5,
   },
 });

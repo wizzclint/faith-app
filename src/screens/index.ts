@@ -4,4 +4,7 @@ export * from "./GameScreen";
 export * from "./ProfileScreen";
 export * from "./MissionsScreen";
 export * from "./CompeteScreen";
+export * from "./CompetitionScreen";
+export * from "./CreateCompetitionScreen";
 export * from "./LeaderboardScreen";
+export * from "./InfoScreen";

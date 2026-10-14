@@ -1,43 +1,52 @@
 import React from "react";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../design/colors";
 import { spacing } from "../../design/spacing";
+import { FramedCard } from "../ui/FramedCard";
+import { GlowButton } from "../ui/GlowButton";
 
 interface PauseOverlayProps {
   onResume: () => void;
-  onRestart: () => void;
+  /** Left out for a competition run, which can't be replayed. */
+  onRestart?: () => void;
   onSettings: () => void;
   onExit: () => void;
+  exitLabel?: string;
+  /** A line under the title, e.g. which competition run this is. */
+  note?: string;
 }
 
 /**
  * Translucent — gameplay stays faintly visible behind it (spec section 20),
- * unlike Game Over which is a hard stop. Reuses the same recolored glass
- * panel as Game Over for the card chrome.
+ * unlike Game Over which is a hard stop. Shares the Game Over card frame.
  */
-export function PauseOverlay({ onResume, onRestart, onSettings, onExit }: PauseOverlayProps) {
+export function PauseOverlay({
+  onResume,
+  onRestart,
+  onSettings,
+  onExit,
+  exitLabel = "EXIT",
+  note,
+}: PauseOverlayProps) {
   return (
     <View style={styles.overlay}>
-      <ImageBackground
-        source={require("../../../assets/sprites/ui/panel_glass.png")}
-        resizeMode="stretch"
-        style={styles.card}
-      >
-        <Text style={styles.title}>PAUSED</Text>
+      <FramedCard style={styles.card}>
+        <Text style={[styles.title, !!note && styles.titleWithNote]}>PAUSED</Text>
+        {note && <Text style={styles.note}>{note}</Text>}
 
-        <Pressable style={styles.primaryButton} onPress={onResume}>
-          <Text style={styles.primaryButtonText}>RESUME</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={onRestart}>
-          <Text style={styles.secondaryButtonText}>RESTART</Text>
-        </Pressable>
+        <GlowButton label="RESUME" icon="play" onPress={onResume} style={styles.resume} />
+        {onRestart && (
+          <Pressable style={styles.secondaryButton} onPress={onRestart}>
+            <Text style={styles.secondaryButtonText}>RESTART</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.secondaryButton} onPress={onSettings}>
           <Text style={styles.secondaryButtonText}>SETTINGS</Text>
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={onExit}>
-          <Text style={styles.secondaryButtonText}>EXIT</Text>
+          <Text style={styles.secondaryButtonText}>{exitLabel}</Text>
         </Pressable>
-      </ImageBackground>
+      </FramedCard>
     </View>
   );
 }
@@ -45,49 +54,45 @@ export function PauseOverlay({ onResume, onRestart, onSettings, onExit }: PauseO
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,9,13,0.55)",
+    backgroundColor: "rgba(3,8,11,0.6)",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: 20,
   },
   card: {
     width: "100%",
-    maxWidth: 320,
-    paddingVertical: 32,
-    paddingHorizontal: 28,
-    alignItems: "center",
-    overflow: "hidden",
+    maxWidth: 340,
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: 2,
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 4,
     marginBottom: spacing.xxl,
   },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginBottom: spacing.md,
-    width: "100%",
-    alignItems: "center",
+  titleWithNote: {
+    marginBottom: spacing.sm,
   },
-  primaryButtonText: {
-    color: colors.background,
+  note: {
+    color: colors.accent,
+    fontSize: 11,
     fontWeight: "800",
-    fontSize: 14,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+    textAlign: "center",
+    marginBottom: spacing.xl,
+  },
+  resume: {
+    marginBottom: spacing.md,
   },
   secondaryButton: {
     paddingVertical: 12,
-    width: "100%",
+    alignSelf: "stretch",
     alignItems: "center",
   },
   secondaryButtonText: {
     color: colors.textSecondary,
     fontWeight: "700",
     fontSize: 13,
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
 });

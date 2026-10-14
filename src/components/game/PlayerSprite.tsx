@@ -15,7 +15,8 @@ import {
   useSlideFrames,
 } from "./playerSpriteFrames";
 
-const DISPLAY_HEIGHT = 78;
+/** On-screen height of the run pose; every other pose shares its scale. */
+const RUN_DISPLAY_HEIGHT = 78;
 
 type Phase = "run" | "jump" | "slide" | "dead";
 
@@ -104,16 +105,22 @@ export function PlayerSprite({
           ? slideFrames[frameIndex]
           : runFrames[frameIndex];
 
-  const naturalWidth = image?.width() ?? DISPLAY_HEIGHT;
-  const naturalHeight = image?.height() ?? DISPLAY_HEIGHT;
-  const displayWidth = naturalWidth * (DISPLAY_HEIGHT / naturalHeight);
+  // One shared scale (not a fixed height per frame), so the slide pose really
+  // is shorter on screen — fitting each frame to 78px drew sliding as tall as standing.
+  const referenceHeight = runFrames[0]?.height() ?? image?.height() ?? RUN_DISPLAY_HEIGHT;
+  const scale = RUN_DISPLAY_HEIGHT / referenceHeight;
+  const displayWidth = (image?.width() ?? RUN_DISPLAY_HEIGHT) * scale;
+  const displayHeight = (image?.height() ?? RUN_DISPLAY_HEIGHT) * scale;
 
   const x = useDerivedValue(() => playerX.value - displayWidth / 2, [displayWidth]);
-  const y = useDerivedValue(() => groundY - DISPLAY_HEIGHT - jumpOffset.value, [groundY]);
+  const y = useDerivedValue(
+    () => groundY - displayHeight - jumpOffset.value,
+    [groundY, displayHeight]
+  );
 
   if (!image) return null;
 
   return (
-    <Image image={image} x={x} y={y} width={displayWidth} height={DISPLAY_HEIGHT} fit="contain" />
+    <Image image={image} x={x} y={y} width={displayWidth} height={displayHeight} fit="contain" />
   );
 }

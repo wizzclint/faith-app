@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import {
+  cancelAnimation,
   Easing,
   runOnJS,
   useFrameCallback,
@@ -189,6 +190,19 @@ export function useRunnerEngine({ laneX, topY, groundY }: RunnerEngineConfig) {
     [tick]
   );
 
+  /**
+   * Pool slots are mutated in place, and Reanimated only notifies readers
+   * when `.value` is reassigned — without this, sprites never saw a slot's
+   * new lane/kind (every obstacle and coin was drawn in the middle lane).
+   */
+  const notifyPoolReaders = () => {
+    "worklet";
+    obstacles.modify();
+    coins.modify();
+    powerUpSlots.modify();
+    particles.modify();
+  };
+
   const handleCrash = useCallback(
     (finalScore: number, finalCoins: number, finalElapsedSec: number) => {
       soundManager.playCollision();
@@ -311,6 +325,10 @@ export function useRunnerEngine({ laneX, topY, groundY }: RunnerEngineConfig) {
           }
 
           isActive.value = 0;
+          // Freeze the player where the hit happened instead of letting an
+          // in-progress lane change carry the body into the next lane.
+          cancelAnimation(playerX);
+          notifyPoolReaders();
           shakeX.value = withSequence(
             withTiming(SHAKE_MAGNITUDE_PX, { duration: SHAKE_SETTLE_MS * 0.15 }),
             withTiming(-SHAKE_MAGNITUDE_PX * 0.7, { duration: SHAKE_SETTLE_MS * 0.2 }),
@@ -435,6 +453,8 @@ export function useRunnerEngine({ laneX, topY, groundY }: RunnerEngineConfig) {
       particle.y += particle.vy * dt;
     }
 
+    notifyPoolReaders();
+
     // --- continuous distance score (not combo-multiplied — a steady baseline) ---
     scoreSV.value += effectiveSpeed * dt * DISTANCE_SCORE_RATE;
 
@@ -508,18 +528,21 @@ export function useRunnerEngine({ laneX, topY, groundY }: RunnerEngineConfig) {
     () => ({
       left: () => {
         "worklet";
+        if (isActive.value !== 1) return;
         const next = Math.max(0, playerLane.value - 1) as Lane;
         playerLane.value = next;
         playerX.value = withTiming(laneX[next], { duration: LANE_CHANGE_DURATION_MS });
       },
       right: () => {
         "worklet";
+        if (isActive.value !== 1) return;
         const next = Math.min(LANE_COUNT - 1, playerLane.value + 1) as Lane;
         playerLane.value = next;
         playerX.value = withTiming(laneX[next], { duration: LANE_CHANGE_DURATION_MS });
       },
       jump: () => {
         "worklet";
+        if (isActive.value !== 1) return;
         if (jumpOffset.value > 0 || slideProgress.value > 0) return;
         runOnJS(soundManager.playJump)();
         jumpOffset.value = withSequence(
@@ -535,6 +558,7 @@ export function useRunnerEngine({ laneX, topY, groundY }: RunnerEngineConfig) {
       },
       slide: () => {
         "worklet";
+        if (isActive.value !== 1) return;
         if (slideProgress.value > 0 || jumpOffset.value > 0) return;
         runOnJS(soundManager.playSlide)();
         const quick = SLIDE_DURATION_MS * 0.25;

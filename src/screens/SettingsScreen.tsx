@@ -1,17 +1,19 @@
+import { useNavigation } from "@react-navigation/native";
 import React, { useEffect } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import ClusterPickerFeature from "../components/cluster/cluster-picker-feature";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinkRow } from "../components/ui/LinkRow";
 import { ToggleRow } from "../components/ui/ToggleRow";
+import { links } from "../config/links";
 import { colors } from "../design/colors";
 import { spacing } from "../design/spacing";
 import { typography } from "../design/typography";
+import { useServerConfig } from "../services/competition/hooks";
 import { useSettingsStore } from "../store/settingsStore";
 
-const COMING_SOON = (title: string) =>
-  Alert.alert(title, "Not written yet — this will hold the real content before launch.");
-
 export function SettingsScreen() {
+  const navigation = useNavigation();
+  const { data: config } = useServerConfig();
+  const cluster = config?.cluster ?? "devnet";
   const loaded = useSettingsStore((s) => s.loaded);
   const load = useSettingsStore((s) => s.load);
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -44,16 +46,26 @@ export function SettingsScreen() {
 
       <Text style={styles.sectionTitle}>ACCOUNT</Text>
       <View style={styles.section}>
-        <ClusterPickerFeature />
+        {/* The network is set by the FAITH server, not chosen here: stakes and payouts only work on its cluster. */}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Network</Text>
+          <Text style={styles.infoValue}>
+            Solana {cluster}
+            {cluster !== "mainnet-beta" ? " · test SOL" : ""}
+          </Text>
+        </View>
       </View>
 
       <Text style={styles.sectionTitle}>SUPPORT</Text>
       <View style={styles.section}>
-        <LinkRow label="Help" onPress={() => COMING_SOON("Help")} />
-        <LinkRow label="Terms & Conditions" onPress={() => COMING_SOON("Terms & Conditions")} />
-        <LinkRow label="Privacy Policy" onPress={() => COMING_SOON("Privacy Policy")} />
-        <LinkRow label="Responsible Gaming" onPress={() => COMING_SOON("Responsible Gaming")} />
-        <LinkRow label="About FAITH" onPress={() => COMING_SOON("About FAITH")} />
+        <LinkRow label="Help" onPress={() => navigation.navigate("Info", { topic: "help" })} />
+        <LinkRow label="Terms & Conditions" onPress={() => Linking.openURL(links.terms)} />
+        <LinkRow label="Privacy Policy" onPress={() => Linking.openURL(links.privacy)} />
+        <LinkRow
+          label="Responsible Gaming"
+          onPress={() => navigation.navigate("Info", { topic: "responsible" })}
+        />
+        <LinkRow label="About FAITH" onPress={() => navigation.navigate("Info", { topic: "about" })} />
       </View>
     </ScrollView>
   );
@@ -80,5 +92,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+  },
+  infoLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  infoValue: {
+    color: colors.textSecondary,
+    fontSize: 14,
   },
 });

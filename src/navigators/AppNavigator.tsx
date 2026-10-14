@@ -2,22 +2,14 @@
  * The app navigator (formerly "AppNavigator" and "MainNavigator") is used for the primary
  * navigation flows of your app.
  */
-import {
-  DarkTheme as NavigationDarkTheme,
-  DefaultTheme as NavigationDefaultTheme,
-  NavigationContainer,
-} from "@react-navigation/native";
+import { DarkTheme as NavigationDarkTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
-import { Appearance, useColorScheme } from "react-native";
 import * as Screens from "../screens";
 import { HomeNavigator } from "./HomeNavigator";
 import { StatusBar } from "expo-status-bar";
-import {
-  MD3DarkTheme,
-  MD3LightTheme,
-  adaptNavigationTheme,
-} from "react-native-paper";
+import { MD3DarkTheme, adaptNavigationTheme } from "react-native-paper";
+import { colors } from "../design/colors";
 
 /**
  * This type allows TypeScript to know what routes are defined in this navigator
@@ -35,9 +27,15 @@ import {
 type RootStackParamList = {
   Home: undefined;
   Settings: undefined;
-  Game: undefined;
+  /** With a competitionId, the run is one of the player's attempts in that competition. */
+  Game: { competitionId: string; competitionName: string; attemptsPerPlayer: number } | undefined;
   Missions: undefined;
-  // 🔥 Your screens go here
+  /** `notice` is shown once on arrival, e.g. why a payment made while creating it didn't go through. */
+  Competition: { id: string; notice?: string };
+  /** `opponent` preselects who a head-to-head is against: the house right away, or any player. */
+  CreateCompetition: { kind: "HEAD_TO_HEAD" | "TOURNAMENT"; opponent?: "HOUSE" | "PLAYER" };
+  /** In-app reading: help, responsible gaming, about. */
+  Info: { topic: "help" | "responsible" | "about" };
 };
 
 declare global {
@@ -68,7 +66,17 @@ const AppStack = () => {
         component={Screens.MissionsScreen}
         options={{ title: "Missions" }}
       />
-      {/** 🔥 Your screens go here */}
+      <Stack.Screen
+        name="Competition"
+        component={Screens.CompetitionScreen}
+        options={{ title: "" }}
+      />
+      <Stack.Screen
+        name="CreateCompetition"
+        component={Screens.CreateCompetitionScreen}
+        options={{ title: "" }}
+      />
+      <Stack.Screen name="Info" component={Screens.InfoScreen} options={{ title: "" }} />
     </Stack.Navigator>
   );
 };
@@ -76,36 +84,23 @@ const AppStack = () => {
 export interface NavigationProps
   extends Partial<React.ComponentProps<typeof NavigationContainer>> {}
 
+// Dark-only, with the FAITH background so screen transitions never flash a different shade.
+const { DarkTheme } = adaptNavigationTheme({ reactNavigationDark: NavigationDarkTheme });
+const navigationTheme = {
+  ...MD3DarkTheme,
+  ...DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    ...DarkTheme.colors,
+    background: colors.background,
+    card: colors.background,
+  },
+};
+
 export const AppNavigator = (props: NavigationProps) => {
-  const colorScheme = useColorScheme();
-  const { LightTheme, DarkTheme } = adaptNavigationTheme({
-    reactNavigationLight: NavigationDefaultTheme,
-    reactNavigationDark: NavigationDarkTheme,
-  });
-
-  const CombinedDefaultTheme = {
-    ...MD3LightTheme,
-    ...LightTheme,
-    colors: {
-      ...MD3LightTheme.colors,
-      ...LightTheme.colors,
-    },
-  };
-  const CombinedDarkTheme = {
-    ...MD3DarkTheme,
-    ...DarkTheme,
-    colors: {
-      ...MD3DarkTheme.colors,
-      ...DarkTheme.colors,
-    },
-  };
-
   return (
-    <NavigationContainer
-      theme={colorScheme === "dark" ? CombinedDarkTheme : CombinedDefaultTheme}
-      {...props}
-    >
-      <StatusBar />
+    <NavigationContainer theme={navigationTheme} {...props}>
+      <StatusBar style="light" />
       <AppStack />
     </NavigationContainer>
   );

@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import bs58 from "bs58";
 import { create } from "zustand";
-import { setAuthToken } from "../services/api/authToken";
+import { setAuthToken, setUnauthorizedHandler } from "../services/api/authToken";
 import { api, ApiError } from "../services/api/client";
+import { isWalletCancellation, walletErrorMessage } from "../utils/walletErrors";
 
 const AUTH_STORAGE_KEY = "faith-run:backend-auth";
 
@@ -62,12 +63,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         JSON.stringify({ token, userId: user.id, pubkey: user.pubkey })
       );
     } catch (err) {
+      // Backing out in the wallet is a choice, not a failure: just go back to the button.
+      if (!(err instanceof ApiError) && isWalletCancellation(err)) {
+        set({ status: "idle", error: null });
+        return;
+      }
       const message =
         err instanceof ApiError
           ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Sign-in failed — is the backend reachable?";
+          : (walletErrorMessage(err) ??
+            "Couldn't reach the FAITH servers. Check your connection and try again.");
       set({ status: "error", error: message });
     }
   },
@@ -78,3 +83,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});
   },
 }));
+
+// Session tokens expire after a week; when the server rejects one, go back to "sync again".
+setUnauthorizedHandler(() => {
+  void useAuthStore.getState().signOut();
+});

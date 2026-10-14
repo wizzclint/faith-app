@@ -98,9 +98,5 @@ export const PARTICLE_GRAVITY = 220;
 export const SHAKE_MAGNITUDE_PX = 14;
 export const SHAKE_SETTLE_MS = 320;
 
-/** Parallax layer scroll speeds, relative to the main world scroll. */
-export const PARALLAX_FAR_FACTOR = 0.25;
-export const PARALLAX_NEAR_FACTOR = 0.6;
-
 /** Score count-up duration on the Game Over screen. */
 export const SCORE_COUNT_UP_MS = 900;

@@ -1,74 +1,41 @@
-import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol";
-import { useState, useCallback } from "react";
-import { Button } from "react-native-paper";
-import { alertAndLog } from "../../utils/alertAndLog";
-import { useAuthorization } from "../../utils/useAuthorization";
+import { useCallback, useState } from "react";
 import { useMobileWallet } from "../../utils/useMobileWallet";
+import { alertAndLog } from "../../utils/alertAndLog";
+import { isWalletCancellation, walletErrorMessage } from "../../utils/walletErrors";
+import { FaithButton } from "../ui/FaithButton";
 
-export function ConnectButton() {
-  const { authorizeSession } = useAuthorization();
+/** Asks the player's wallet app to connect. Backing out of it is silent; anything else is explained. */
+export function useConnectWallet() {
   const { connect } = useMobileWallet();
-  const [authorizationInProgress, setAuthorizationInProgress] = useState(false);
-  const handleConnectPress = useCallback(async () => {
+  const [connecting, setConnecting] = useState(false);
+
+  const run = useCallback(async () => {
+    if (connecting) return;
+    setConnecting(true);
     try {
-      if (authorizationInProgress) {
-        return;
-      }
-      setAuthorizationInProgress(true);
       await connect();
-    } catch (err: any) {
-      alertAndLog(
-        "Error during connect",
-        err instanceof Error ? err.message : err
-      );
+    } catch (err) {
+      if (!isWalletCancellation(err)) {
+        alertAndLog(
+          "Couldn't connect",
+          walletErrorMessage(err) ?? "Your wallet app couldn't connect. Try again."
+        );
+      }
     } finally {
-      setAuthorizationInProgress(false);
+      setConnecting(false);
     }
-  }, [authorizationInProgress, authorizeSession]);
-  return (
-    <Button
-      mode="contained"
-      disabled={authorizationInProgress}
-      onPress={handleConnectPress}
-      style={{ flex: 1 }}
-    >
-      Connect
-    </Button>
-  );
+  }, [connect, connecting]);
+
+  return { connect: run, connecting };
 }
 
-export function SignInButton() {
-  const { authorizeSession } = useAuthorization();
-  const { signIn } = useMobileWallet();
-  const [signInInProgress, setSignInInProgress] = useState(false);
-  const handleConnectPress = useCallback(async () => {
-    try {
-      if (signInInProgress) {
-        return;
-      }
-      setSignInInProgress(true);
-      await signIn({
-        domain: "yourdomain.com",
-        statement: "Sign into Expo Template App",
-        uri: "https://yourdomain.com",
-      });
-    } catch (err: any) {
-      alertAndLog(
-        "Error during sign in",
-        err instanceof Error ? err.message : err
-      );
-    } finally {
-      setSignInInProgress(false);
-    }
-  }, [signInInProgress, authorizeSession]);
+export function ConnectButton() {
+  const { connect, connecting } = useConnectWallet();
   return (
-    <Button
-      mode="outlined"
-      disabled={signInInProgress}
-      onPress={handleConnectPress}
-      style={{ marginLeft: 4, flex: 1 }}
-    >
-      Sign in
-    </Button>
+    <FaithButton
+      label={connecting ? "OPENING YOUR WALLET…" : "CONNECT WALLET"}
+      onPress={connect}
+      disabled={connecting}
+    />
   );
 }

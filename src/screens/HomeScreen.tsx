@@ -1,18 +1,18 @@
+import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AccountDetailFeature } from "../components/account/account-detail-feature";
 import { FaithSyncButton } from "../components/account/faith-sync-button";
 import { SignInFeature } from "../components/sign-in/sign-in-feature";
-import { FaithCard } from "../components/ui/FaithCard";
 import { GameStat } from "../components/ui/GameStat";
+import { GlowButton } from "../components/ui/GlowButton";
 import { LevelBadge } from "../components/ui/LevelBadge";
 import { MissionCard } from "../components/ui/MissionCard";
 import { XPBar } from "../components/ui/XPBar";
 import { colors } from "../design/colors";
 import { spacing } from "../design/spacing";
-import { typography } from "../design/typography";
 import { challengeForDate, missionsForDate, todayKey, xpRequiredForLevel } from "../game/progression";
 import { useAuthStore } from "../store/authStore";
 import { useGameStore } from "../store/gameStore";
@@ -48,8 +48,10 @@ export function HomeScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.topRow}>
-        <Text style={styles.wordmark}>FAITH RUN</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.wordmark}>
+          FAITH <Text style={styles.wordmarkAccent}>RUN</Text>
+        </Text>
         <LevelBadge level={level} />
       </View>
 
@@ -57,31 +59,62 @@ export function HomeScreen() {
         <XPBar current={xp} required={xpRequiredForLevel(level)} />
       </View>
 
-      <Pressable style={styles.runHero} onPress={() => navigation.navigate("Game")}>
-        <Text style={styles.runHeroLabel}>RUN NOW</Text>
-        {bestScore > 0 && <Text style={styles.runHeroBest}>BEST {bestScore.toLocaleString()}</Text>}
-      </Pressable>
+      <View style={styles.heroArt}>
+        <Image
+          source={require("../../assets/ui/home-hero.jpg")}
+          style={styles.heroImage}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+      </View>
 
-      <Pressable onPress={() => navigation.navigate("Missions")}>
-        <FaithCard style={styles.challengeCard} elevated>
-          <Text style={styles.cardLabel}>DAILY CHALLENGE</Text>
+      <GlowButton
+        size="hero"
+        label="RUN NOW"
+        sublabel={bestScore > 0 ? `BEST ${bestScore.toLocaleString()}` : undefined}
+        onPress={() => navigation.navigate("Game")}
+        style={styles.runNow}
+      />
+
+      <Pressable style={styles.challengeCard} onPress={() => navigation.navigate("Missions")}>
+        <View style={styles.challengeIcon}>
+          <MaterialCommunityIcon name="crosshairs-gps" size={26} color={colors.accent} />
+        </View>
+        <View style={styles.challengeBody}>
+          <Text style={styles.eyebrow}>DAILY CHALLENGE</Text>
           <Text style={styles.challengeTitle}>{challenge.label}</Text>
           <Text style={styles.challengeReward}>
-            {daily.challengeCompleted ? "✓ Completed today" : `+${challenge.xpReward} XP`}
+            {daily.challengeCompleted ? "✓  COMPLETED TODAY" : `+${challenge.xpReward} XP`}
           </Text>
-        </FaithCard>
+        </View>
+        <View style={styles.hexBadge}>
+          <MaterialCommunityIcon name="hexagon-outline" size={46} color={colors.accent} />
+          <MaterialCommunityIcon
+            name="star"
+            size={18}
+            color={colors.accentBright}
+            style={styles.hexStar}
+          />
+        </View>
       </Pressable>
 
-      <FaithCard style={styles.progressCard}>
-        <GameStat label="BEST SCORE" value={bestScore} />
-        <GameStat label={"STREAK"} value={`🔥 ${currentStreak}d`} />
-        <GameStat label="RUNS" value={totalRuns} />
-      </FaithCard>
+      <View style={styles.statsRow}>
+        <View style={styles.statTile}>
+          <GameStat icon="trophy" tint={colors.warning} label="BEST SCORE" value={bestScore} />
+        </View>
+        <View style={styles.statTile}>
+          <GameStat icon="fire" tint={colors.fire} label="STREAK" value={`${currentStreak}d`} />
+        </View>
+        <View style={styles.statTile}>
+          <GameStat icon="run-fast" tint={colors.accentSecondary} label="RUNS" value={totalRuns} />
+        </View>
+      </View>
 
       <View style={styles.missionsHeader}>
-        <Text style={styles.cardLabel}>MISSIONS</Text>
-        <Pressable onPress={() => navigation.navigate("Missions")}>
+        <Text style={styles.sectionTitle}>MISSIONS</Text>
+        <Pressable style={styles.seeAllButton} onPress={() => navigation.navigate("Missions")} hitSlop={10}>
           <Text style={styles.seeAll}>SEE ALL</Text>
+          <MaterialCommunityIcon name="chevron-right" size={18} color={colors.accent} />
         </Pressable>
       </View>
       {missions.map((mission) => {
@@ -101,15 +134,17 @@ export function HomeScreen() {
             target={mission.target}
             xpReward={mission.xpReward}
             completed={daily.missionsCompleted.includes(mission.id)}
+            metric={mission.metric}
           />
         );
       })}
 
       {/* Wallet stays a secondary, lower-priority block — the game is the product. */}
       <View style={styles.walletBlock}>
-        <Text style={styles.cardLabel}>WALLET</Text>
-        {selectedAccount ? <AccountDetailFeature /> : <SignInFeature />}
+        <Text style={styles.eyebrow}>WALLET</Text>
+        {/* Sync sits first: it unlocks the leaderboard, competitions and rewards. */}
         <FaithSyncButton />
+        {selectedAccount ? <AccountDetailFeature /> : <SignInFeature />}
       </View>
     </ScrollView>
   );
@@ -122,9 +157,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.giant,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.massive,
   },
-  topRow: {
+  titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -132,55 +168,98 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: colors.textPrimary,
-    ...typography.displaySmall,
-  },
-  xpRow: {
-    marginBottom: spacing.xl,
-  },
-  runHero: {
-    backgroundColor: colors.accent,
-    borderRadius: 20,
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-    marginBottom: spacing.lg,
-  },
-  runHeroLabel: {
-    color: colors.background,
-    fontWeight: "800",
-    fontSize: 20,
-    letterSpacing: 1,
-  },
-  runHeroBest: {
-    color: colors.background,
-    opacity: 0.7,
-    fontWeight: "700",
-    fontSize: 12,
-    marginTop: spacing.xs,
+    fontSize: 36,
+    fontWeight: "900",
     letterSpacing: 0.5,
   },
-  challengeCard: {
+  wordmarkAccent: {
+    color: colors.accent,
+  },
+  xpRow: {
     marginBottom: spacing.lg,
   },
-  cardLabel: {
+  heroArt: {
+    aspectRatio: 1212 / 672,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  // Pulled up so the pill straddles the bottom edge of the art.
+  runNow: {
+    marginTop: -30,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  challengeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  challengeIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.accentDeep,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  challengeBody: {
+    flex: 1,
+  },
+  eyebrow: {
     color: colors.textSecondary,
-    ...typography.caption,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 3,
   },
   challengeTitle: {
     color: colors.textPrimary,
     fontWeight: "800",
-    fontSize: 16,
-    marginTop: spacing.sm,
+    fontSize: 19,
+    marginTop: spacing.xs,
     marginBottom: spacing.xs,
   },
   challengeReward: {
     color: colors.accent,
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: "800",
+    fontSize: 14,
+    letterSpacing: 1,
   },
-  progressCard: {
+  hexBadge: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hexStar: {
+    position: "absolute",
+  },
+  statsRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    gap: spacing.md,
     marginBottom: spacing.xl,
+  },
+  statTile: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.lg,
   },
   missionsHeader: {
     flexDirection: "row",
@@ -188,13 +267,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: spacing.md,
   },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 4,
+  },
+  seeAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   seeAll: {
     color: colors.accent,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.8,
+    letterSpacing: 1.5,
   },
   walletBlock: {
-    marginTop: spacing.xxxl,
+    marginTop: spacing.xxl,
   },
 });

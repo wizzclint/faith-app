@@ -1,5 +1,6 @@
+import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useEffect, useRef } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import { colors } from "../../design/colors";
 import { soundManager } from "../../game/audio/soundManager";
@@ -32,18 +33,37 @@ export function ComboDisplay({ combo }: ComboDisplayProps) {
   if (combo < 1.5) return null;
 
   return (
-    <Animated.Text style={[styles.combo, animatedStyle]}>
-      ×{combo.toFixed(1)} COMBO
-    </Animated.Text>
+    <Animated.View style={[styles.wrap, animatedStyle]}>
+      <View style={styles.row}>
+        <MaterialCommunityIcon name="fire" size={20} color={colors.fire} />
+        <Text style={styles.combo}>{combo.toFixed(1)} COMBO</Text>
+      </View>
+      <View style={styles.underline} />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  combo: {
+  wrap: {
     marginTop: 8,
+    alignItems: "center",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  combo: {
     color: colors.accent,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     letterSpacing: 1,
+  },
+  underline: {
+    alignSelf: "stretch",
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.borderStrong,
+    marginTop: 3,
   },
 });

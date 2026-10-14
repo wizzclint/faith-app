@@ -56,6 +56,7 @@ export function MissionsScreen() {
               target={mission.target}
               xpReward={mission.xpReward}
               completed={daily.missionsCompleted.includes(mission.id)}
+              metric={mission.metric}
             />
           );
         })}

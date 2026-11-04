@@ -24,12 +24,7 @@ function persist(state: SettingsState) {
   });
 }
 
-/**
- * Sound/Music toggles are real settings but there's no audio system wired up
- * yet (spec section 24 is still unimplemented) — flipping them is currently
- * inert. This store exists now so the eventual audio manager has one real
- * source of truth to read from, rather than adding another store later.
- */
+/** Persisted controls shared by sound effects and the game music player. */
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   loaded: false,
   soundEnabled: true,

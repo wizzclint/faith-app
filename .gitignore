@@ -36,3 +36,12 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Local deployment review bundle
+dist-review/
+
+# Secrets and downloaded release artifacts
+.env
+.env.*
+*.apk
+*.aab

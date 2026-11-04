@@ -39,8 +39,8 @@ function helpSections(config: ServerConfig | undefined): Section[] {
     {
       heading: "Wallet and syncing",
       body: [
-        "Connect a Solana wallet app, then tap SYNC WITH FAITH. Syncing asks your wallet to sign a short message that proves the wallet is yours. It is not a transaction and costs nothing.",
-        "Syncing puts your scores on the leaderboard and unlocks head-to-heads, tournaments and rewards. If you cancel in your wallet, nothing happens and you can try again.",
+        "Connect your wallet and approve the free sign-in message. Your game account connects automatically.",
+        "This enables leaderboard scores, competitions and rewards. If you cancel, tap Finish connecting to retry.",
       ],
     },
     {
@@ -66,38 +66,40 @@ function helpSections(config: ServerConfig | undefined): Section[] {
       heading: "SOL and your wallet section",
       body: [
         "Available balance is the SOL in your connected wallet. Game balance is SOL you've staked in matches that haven't finished. Pending rewards are prizes and refunds waiting for you.",
-        "Deposit shows your wallet address. Withdraw sends your pending rewards to your wallet; Solana's small network fee comes out of each payout. Every payment and payout is listed in your transaction history with a link to it on Solana Explorer.",
+        "Deposit shows your wallet address. Withdraw sends your pending rewards to your wallet; Solana's small network fee comes out of each payout. Smaller payouts are sent straight away, and larger ones are checked and approved by FAITH first, then sent to your wallet. Every payment and payout is listed in your transaction history with a link to it on Solana Explorer.",
         cluster === "mainnet-beta"
-          ? "Paid competitions are switched off."
+          ? (config?.paidEnabled ? "Paid entries use real SOL. Review the fee and prize before approving." : "Paid competitions are switched off.")
           : `FAITH RUN currently runs on Solana ${cluster}, where SOL is free test money with no real-world value.`,
       ],
     },
   ];
 }
 
-const RESPONSIBLE: Section[] = [
-  {
-    heading: "Play for fun",
-    body: [
-      "Everything in FAITH RUN can be played for free. Staked matches and paid tournaments are optional.",
-      "FAITH RUN currently uses Solana devnet, where SOL has no real-world value. Real-money play will only be switched on after a legal review, with its own rules and limits.",
-    ],
-  },
-  {
-    heading: "Know the odds",
-    body: [
-      "The house is tuned to win about three matches in four. Over many staked matches against it, you should expect to lose more than you win.",
-      "Only ever stake what you can afford to lose, and never stake to win back a loss.",
-    ],
-  },
-  {
-    heading: "Take breaks",
-    body: [
-      "Set yourself a time and a spending limit before you play, and stop when you reach either.",
-      "If playing for SOL stops feeling like a game, stop, and talk to someone you trust or a gambling support service where you live.",
-    ],
-  },
-];
+function responsibleSections(config: ServerConfig | undefined): Section[] {
+  return [
+    {
+      heading: "Play for fun",
+      body: [
+        "Everything in FAITH RUN can be played for free. Staked matches and paid tournaments are optional.",
+        "FAITH RUN currently uses Solana devnet, where SOL has no real-world value. Real-money play will only be switched on after a legal review, with its own rules and limits.",
+      ],
+    },
+    {
+      heading: "Know the odds",
+      body: [
+        `The house targets a ${config?.house.targetWinRatePct ?? 75}% win rate. Review its current odds before entering a match.`,
+        "Only ever stake what you can afford to lose, and never stake to win back a loss.",
+      ],
+    },
+    {
+      heading: "Take breaks",
+      body: [
+        "Set yourself a time and a spending limit before you play, and stop when you reach either.",
+        "If playing for SOL stops feeling like a game, stop, and talk to someone you trust or a gambling support service where you live.",
+      ],
+    },
+  ];
+}
 
 function aboutSections(config: ServerConfig | undefined): Section[] {
   return [
@@ -134,7 +136,7 @@ export function InfoScreen() {
   }, [navigation, topic]);
 
   const sections =
-    topic === "help" ? helpSections(config) : topic === "responsible" ? RESPONSIBLE : aboutSections(config);
+    topic === "help" ? helpSections(config) : topic === "responsible" ? responsibleSections(config) : aboutSections(config);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>

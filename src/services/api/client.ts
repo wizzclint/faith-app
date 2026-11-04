@@ -45,7 +45,7 @@ async function request<T>(path: string, { method = "GET", body, auth = false }: 
   const parsed = await response.json().catch(() => ({}));
   if (!response.ok) {
     // A token the server no longer accepts: drop it so the UI asks to sync again.
-    if (response.status === 401 && token) notifyUnauthorized();
+    if (response.status === 401 && token && token === getAuthToken()) notifyUnauthorized();
     throw new ApiError(
       response.status,
       parsed?.error ?? `Request failed (${response.status})`,
@@ -110,6 +110,13 @@ export const api = {
   competitions: () => request<{ competitions: Competition[] }>("/competitions", { auth: true }),
 
   competition: (id: string) => request<CompetitionDetail>(`/competitions/${id}`, { auth: true }),
+
+  /** One page of the caller's own finished competitions of a kind, newest first. */
+  myResults: (kind: Competition["kind"], before?: string) =>
+    request<{ results: Competition[]; pageSize: number }>(
+      `/competitions/results?kind=${kind}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+      { auth: true }
+    ),
 
   createCompetition: (input: CreateCompetitionInput) =>
     request<CompetitionDetail>("/competitions", { method: "POST", body: input, auth: true }),

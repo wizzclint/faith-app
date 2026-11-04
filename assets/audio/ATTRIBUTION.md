@@ -22,5 +22,15 @@ to `.mp3` via ffmpeg for cross-platform playback. Mapping:
 | `uiTap.mp3` | Interface Sounds — `click_001.ogg` |
 
 All placeholder per the FAITH RUN asset strategy — swappable later without
-touching call sites (see `src/game/audio/soundManager.ts`). No background
-music yet.
+touching call sites (see `src/game/audio/soundManager.ts`).
+
+
+## Background music
+
+`faith-run-theme.m4a` - **FAITH RUN: Afterglow**, an original instrumental
+composed for this project: 124 BPM, A minor, 16-bar electronic arcade loop.
+All drums and synthesizer voices are generated mathematically; no external
+samples, recordings, or third-party melodies are used.
+
+Reproduce with `python scripts/compose-music.py` (requires ffmpeg).
+Bundled locally for offline playback. Music volume is independent of effects.

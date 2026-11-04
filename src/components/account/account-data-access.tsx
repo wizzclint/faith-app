@@ -19,11 +19,17 @@ export function useRequestAirdrop({ address }: { address: PublicKey }) {
   return useMutation({
     mutationKey: ["airdrop", { endpoint: connection.rpcEndpoint, address }],
     mutationFn: async (amount: number = 1) => {
+      const before = await connection.getBalance(address, "confirmed");
       const [latestBlockhash, signature] = await Promise.all([
         connection.getLatestBlockhash(),
         connection.requestAirdrop(address, amount * LAMPORTS_PER_SOL),
       ]);
       await connection.confirmTransaction({ signature, ...latestBlockhash }, "confirmed");
+      // When the faucet refuses (over its limit, too many requests) it can still
+      // reply with a confirmed transaction that only carries a note. Only a
+      // balance that actually went up counts as success.
+      const after = await connection.getBalance(address, "confirmed");
+      if (after <= before) throw new Error("The faucet didn't send any SOL.");
       return signature;
     },
     onSuccess: () =>

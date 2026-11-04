@@ -51,6 +51,7 @@ export function RewardsPanel({ competitionId, unpaidOnly = false }: RewardsPanel
       {rewards.map((reward) => {
         const paid = reward.status === "PAID";
         const sending = reward.status === "SENDING";
+        const awaiting = !paid && !sending && !!reward.awaitingApproval;
         const busy = busyId === reward.id;
         return (
           <View key={reward.id} style={styles.row}>
@@ -73,6 +74,8 @@ export function RewardsPanel({ competitionId, unpaidOnly = false }: RewardsPanel
               <Text style={[styles.amount, paid && styles.amountPaid]}>{formatSol(reward.lamports)}</Text>
               {paid ? (
                 <Text style={styles.paid}>PAID</Text>
+              ) : awaiting ? (
+                <Text style={styles.awaiting}>WAITING FOR{"\n"}APPROVAL</Text>
               ) : (
                 <FaithButton
                   label={busy ? "…" : sending ? "CHECK" : "CLAIM"}
@@ -87,6 +90,12 @@ export function RewardsPanel({ competitionId, unpaidOnly = false }: RewardsPanel
       })}
       {rewards.some((reward) => reward.status === "SENDING") && (
         <Text style={styles.note}>A payout is on its way to your wallet. Tap CHECK to update it.</Text>
+      )}
+      {rewards.some((reward) => reward.status === "PENDING" && reward.awaitingApproval) && (
+        <Text style={styles.note}>
+          Larger payouts are checked by FAITH before they're sent. Yours will arrive in your wallet once
+          it's approved; you don't need to do anything.
+        </Text>
       )}
       {rewards.some((reward) => reward.status !== "PAID") && (
         <Text style={styles.note}>
@@ -145,6 +154,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.5,
+  },
+  awaiting: {
+    color: colors.warning,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textAlign: "right",
   },
   claimButton: {
     paddingVertical: 8,

@@ -11,6 +11,7 @@ import {
   shortAddress,
   stateLabel,
 } from "../../services/competition/format";
+import { useServerConfig } from "../../services/competition/hooks";
 import { CompetitionDetail, CompetitionPlayer, CompetitionRun } from "../../services/competition/types";
 import { Countdown } from "./Countdown";
 import { PlayerAvatar, PlayerName } from "./Player";
@@ -29,9 +30,18 @@ function runsOf(player: CompetitionPlayer, attempts: number[]): string {
     .join("  ·  ");
 }
 
+/** "you", "FAITH" for a tournament the game runs itself (hosted by its treasury), or the host's short address. */
+export function useHostLabel(creatorPubkey: string, createdByMe: boolean): string {
+  const { data: config } = useServerConfig();
+  if (createdByMe) return "you";
+  if (config?.treasuryAddress && creatorPubkey === config.treasuryAddress) return "FAITH";
+  return shortAddress(creatorPubkey);
+}
+
 /** The event header: what it costs, what it pays, how full it is and how long is left. */
 export function TournamentHeader({ detail }: { detail: CompetitionDetail }) {
   const { competition } = detail;
+  const host = useHostLabel(competition.creatorPubkey, competition.createdByMe);
   const target = countdownTarget(competition);
   const upcoming = competition.state === "UPCOMING";
 
@@ -59,9 +69,7 @@ export function TournamentHeader({ detail }: { detail: CompetitionDetail }) {
         </View>
         <View style={styles.titleBody}>
           <Text style={styles.name}>{competition.name}</Text>
-          <Text style={styles.host}>
-            Hosted by {competition.createdByMe ? "you" : shortAddress(competition.creatorPubkey)}
-          </Text>
+          <Text style={styles.host}>Hosted by {host}</Text>
         </View>
       </View>
 
@@ -143,8 +151,8 @@ export function TournamentLeaderboard({ detail }: { detail: CompetitionDetail })
           <PlayerAvatar pubkey={player.pubkey} size={32} />
           <View style={styles.rowBody}>
             <PlayerName pubkey={player.pubkey} isMe={player.isMe} />
-            <Text style={styles.rowRuns} numberOfLines={1}>
-              {runsOf(player, attempts)}
+            <Text style={[styles.rowRuns, player.disqualified && styles.disqualified]} numberOfLines={1}>
+              {player.disqualified ? "DISQUALIFIED" : runsOf(player, attempts)}
             </Text>
           </View>
           <Text style={styles.rowTotal}>{player.totalScore.toLocaleString()}</Text>
@@ -361,6 +369,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     fontVariant: ["tabular-nums"],
+  },
+  disqualified: {
+    color: colors.danger,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   rowTotal: {
     color: colors.accent,

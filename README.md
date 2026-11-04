@@ -1,105 +1,59 @@
-# Solana Mobile Expo Template
+# FAITH RUN
 
-This template is a ready-to-go Android Expo dApp that offers:
+Android endless runner with local progression, Solana wallet sign-in,
+leaderboards, head-to-head matches, tournaments and rewards.
+The current backend and wallet network use **devnet test SOL**.
 
-- Solana libraries: `web3.js`, Mobile Wallet Adapter, and `spl-token`.
-- Required polyfills like `crypto` and `Buffer` configured.
-- Pre-built React UI and re-usable hooks and code patterns like `useMobileWallet`.
+## Develop and check
 
-**This is only fully functional on Android.**
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="./screenshots/screenshot1.png" alt="Scaffold dApp Screenshot 1" width=300 />
-    </td>
-    <td align="center">
-      <img src="./screenshots/screenshot2.png" alt="Scaffold dApp Screenshot 2" width=300 />
-    </td>
-    <td align="center">
-      <img src="./screenshots/screenshot3.png" alt="Scaffold dApp Screenshot 3" width=300 />
-    </td>
-  </tr>
-</table>
-
-## Tech Stack
-
-| Library               | Category          | Version | Description                                           |
-| --------------------- | ----------------- | ------- | ----------------------------------------------------- |
-| React Native          | Mobile Framework  | v0.76   | The best cross-platform mobile framework              |
-| Expo                  | SDK               | v52     | Allows (optional) Expo modules                        |
-| React                 | UI Framework      | v18.3   | The most popular UI framework in the world            |
-| Mobile Wallet Adapter | SDK               | v2.1    | Connect and request signing from mobile wallet apps   |
-| Solana web3.js        | SDK               | v1.78   | General Solana library for transactions and RPCs      |
-| spl-token             | SDK               | v0.4    | Library for building with Solana SPL tokens           |
-| React Native Paper    | Component Library | v5.12   | Production-ready components following Material Design |
-| React Navigation      | Navigation        | v6      | Performant and consistent navigation framework        |
-| React Query           | State management  | v5.24   | Async query management                                |
-| TypeScript            | Language          | v5      | Static typechecking                                   |
-| AsyncStorage          | Persistence       | v1.23   | State persistence                                     |
-
-## Quick Start
-
-### Prerequisites
-
-- A free [Expo](https://expo.dev/) account.
-- An Android device/emulator to test your app
-  - Install an MWA compliant wallet app on your device/emulator.
-- If using Expo's cloud service `eas build`, no further setup is required.
-- If building locally:
-  - React Native and Android Envrionment [setup](https://docs.solanamobile.com/getting-started/development-setup)
-
-### Initialize
-
-Run the CLI command:
-
-```
-yarn create expo-app --template @solana-mobile/solana-mobile-expo-template
+```sh
+npm ci
+npm start
+npm run typecheck
+npm test
 ```
 
-Choose your project name then navigate into the directory.
+Use an Expo development build, not Expo Go, for Mobile Wallet Adapter.
+Wallet flow tests use Node's Ed25519 implementation and need no backend checkout.
 
-### Build and run the app
+## Install on an Android phone
 
-Once your app is initialized, follow the **["Running the app"](https://docs.solanamobile.com/react-native/expo#running-the-app)** guide to launch the template as a custom development build.
+```sh
+npm run build:preview -- --non-interactive
+```
 
-## Troubleshooting
+The preview profile builds a signed, standalone APK with an incremented
+Android version code. Open the Expo build's install link on the phone and
+allow installation from your browser. Metro is not required.
+For a store bundle, use `npm run build:production` after release checks.
 
-- `Metro has encountered an error: While trying to resolve module @solana-mobile/mobile-wallet-adapter-protocol...`
+## Music
 
-  - This is an on-going issue when using `npm install` to install the Expo template.
-  - To mitigate, clean your project dependencies and reinstall with `yarn install`
+An original 31-second electronic loop plays during active runs. Settings
+has independent Music and Sound Effects switches. Pausing, opening Settings,
+leaving the game, or backgrounding the app stops the music; backgrounding
+also pauses gameplay. Music is bundled and needs no network access.
 
-- `The package 'solana-mobile-wallet-adapter-protocol' doesn't seem to be linked. Make sure: ...`
+To reproduce the track, install ffmpeg and run:
 
-  - Ensure you are _NOT_ using Expo Go to run your app.
-  - You need to be using an [Expo custom development build](https://docs.solanamobile.com/react-native/expo#custom-development-build), rather than Expo Go.
+```sh
+python scripts/compose-music.py
+```
 
-- `failed to connect to...`
+See `assets/audio/ATTRIBUTION.md` for audio sources.
 
-  - This is an Expo error that can occur when trying to connect to the dev server on certain Wifi networks.
-  - To fix, try starting the dev server with the `--tunnel` command (`npx expo start --dev-client --tunnel`)
+## Phone smoke test
 
-- `Error: crypto.getRandomValues() not supported`
-  - This is a polyfill issue when trying to use certain functions from the `@solana/web3.js` in a React Native/Expo environment.
-  - To fix, ensure your App properly imports and uses the polyfills like in this [guide](http://docs.solanamobile.com/react-native/expo#step-3-update-appjs-with-polyfills).
+1. Launch offline, start a free run, check swipes, effects and music.
+2. Pause and resume; disable Music in Settings while leaving effects on.
+3. Switch apps during a run: it should pause and audio should stop.
+4. Connect Phantom or Solflare, approve the free sign-in message, and check
+   leaderboard submission without a separate sync step.
+5. Cancel sign-in, retry Finish connecting, then disconnect and reconnect.
+6. On devnet, test a free competition, test-SOL entry and reward withdrawal.
 
-<br>
-
-- `error Failed to load configuration of your project.`
-  - Same as above, but for `yarn`. [Uninstall and reinstall](https://github.com/react-native-community/cli#updating-the-cli) the CLI through yarn.
-
-<br>
-
-- `Looks like your iOS environment is not properly set`:
-  - You can ignore this during template initialization and build the Android app as normal. This template is only compatible with Android.
-
-<br>
-
-- `Usage Error: It seems you are trying to add a package using a https:... url; we now require package names to be explicitly specified.`
-  - This error happens on certain versions of `yarn`, and occurs if you try to initialize the template through the Github repo URL, rather than the npm package. To avoid this, use the `@solana-mobile/solana-mobile-dapp-scaffold` package as specified, or downgrade your `yarn` version to classic (1.22.x).
-
-<br>
-
-- `error Couldn't find the ".../@solana-mobile/solana-mobile-dapp-scaffold/template.config.js file inside "@solana-mobile/solana-mobile-dapp-scaffold" template.`
-  - This is a [known error](https://github.com/react-native-community/cli/issues/1924) that occurs with certain versions of `yarn` (>= 3.5.0). It is fixed by running the cli command with the `--npm` flag or downgrading your version of `yarn`.
+The app identity website must publish `/.well-known/assetlinks.json` with
+package `com.faitharcade.faithrun` and the APK's signing certificate fingerprint.
+Verify terms, privacy and wallet app verification on-device before release.
+Real-money play remains a separate release requiring consistent mainnet
+configuration, stronger anti-cheat and the server's real-money gate.

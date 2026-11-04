@@ -22,6 +22,7 @@ import {
   isJoinable,
   useCompetitions,
   useMe,
+  useMyResults,
   useRefreshCompetitive,
   useServerConfig,
 } from "../services/competition/hooks";
@@ -29,6 +30,42 @@ import { Competition } from "../services/competition/types";
 import { useAuthStore } from "../store/authStore";
 
 type Mode = "h2h" | "tournaments";
+const MATCHES_SHOWN = 5;
+
+/** A Results tab: the player's own finished competitions, with Load more for older ones. */
+function ResultsList({
+  query,
+  synced,
+  render,
+}: {
+  query: ReturnType<typeof useMyResults>;
+  synced: boolean;
+  render: (items: Competition[]) => React.ReactNode;
+}) {
+  if (!synced) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.emptyTitle}>YOUR RESULTS</Text>
+        <Text style={styles.emptyBody}>Connect your wallet to see your results.</Text>
+      </View>
+    );
+  }
+  if (query.isLoading) return <ActivityIndicator color={colors.accent} style={styles.loader} />;
+  const items = query.data?.pages.flatMap((page) => page.results) ?? [];
+  return (
+    <>
+      {render(items)}
+      {query.hasNextPage && (
+        <FaithButton
+          label={query.isFetchingNextPage ? "LOADING…" : "LOAD MORE"}
+          variant="secondary"
+          disabled={query.isFetchingNextPage}
+          onPress={() => query.fetchNextPage()}
+        />
+      )}
+    </>
+  );
+}
 type DuelTab = "open" | "mine" | "results";
 type TournamentTab = "live" | "upcoming" | "mine" | "results";
 
@@ -61,11 +98,16 @@ export function CompeteScreen() {
 
   // The server lists soonest-to-close first; results read better newest first.
   const openDuels = duels.filter((c) => c.state === "OPEN");
-  const otherMatches = duels.filter(
-    (c) => !isMine(c) && !isFinished(c) && c.entrants === 2
-  );
+  // A taste of what's being played, not the whole list: it grows with the player base.
+  const otherMatches = duels
+    .filter((c) => !isMine(c) && !isFinished(c) && c.entrants === 2)
+    .slice(0, MATCHES_SHOWN);
   const myDuels = duels.filter((c) => isMine(c) && !isFinished(c));
-  const duelResults = duels.filter(isFinished).reverse();
+  const duelResults = useMyResults("HEAD_TO_HEAD", focused && mode === "h2h" && duelTab === "results");
+  const tournamentResults = useMyResults(
+    "TOURNAMENT",
+    focused && mode === "tournaments" && tournamentTab === "results"
+  );
 
   const liveTournaments = tournaments.filter((c) => c.state === "LIVE");
   const upcomingTournaments = tournaments.filter((c) => c.state === "UPCOMING");
@@ -73,10 +115,6 @@ export function CompeteScreen() {
     ...tournaments.filter((c) => isMine(c) && !isFinished(c)),
     ...tournaments.filter((c) => isMine(c) && isFinished(c)).reverse(),
   ];
-  const tournamentResults = tournaments
-    .filter((c) => isFinished(c) || c.state === "SETTLING")
-    .reverse();
-
   const limit = me?.tournamentMonthlyLimit ?? null;
   const created = me?.tournamentsCreatedThisMonth ?? 0;
   const limitReached = limit !== null && created >= limit;
@@ -114,8 +152,7 @@ export function CompeteScreen() {
 
   const syncNotice = (
     <Text style={styles.notice}>
-      To create or accept anything here, connect your wallet and tap SYNC WITH FAITH in the Wallet
-      section of the Home screen.
+      Connect your wallet to compete.
     </Text>
   );
 
@@ -268,9 +305,15 @@ export function CompeteScreen() {
                   ? "Challenges you post or accept show up here until they're settled."
                   : "Sync your wallet to post or accept a challenge."
               )}
-            {mode === "h2h" &&
-              duelTab === "results" &&
-              list(duelResults, "NO RESULTS YET", "Finished matches from the last 7 days show up here.")}
+            {mode === "h2h" && duelTab === "results" && (
+              <ResultsList
+                query={duelResults}
+                synced={synced}
+                render={(items) =>
+                  list(items, "NO RESULTS YET", "Matches you've played show up here once they finish.")
+                }
+              />
+            )}
 
             {mode === "tournaments" &&
               tournamentTab === "live" &&
@@ -287,13 +330,15 @@ export function CompeteScreen() {
                   ? "Tournaments you create or enter show up here."
                   : "Sync your wallet to create or enter a tournament."
               )}
-            {mode === "tournaments" &&
-              tournamentTab === "results" &&
-              list(
-                tournamentResults,
-                "NO RESULTS YET",
-                "Finished tournaments from the last 7 days show up here."
-              )}
+            {mode === "tournaments" && tournamentTab === "results" && (
+              <ResultsList
+                query={tournamentResults}
+                synced={synced}
+                render={(items) =>
+                  list(items, "NO RESULTS YET", "Tournaments you've played show up here once they finish.")
+                }
+              />
+            )}
           </View>
 
           {config && (

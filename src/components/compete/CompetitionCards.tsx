@@ -15,6 +15,7 @@ import { Competition } from "../../services/competition/types";
 import { useAuthStore } from "../../store/authStore";
 import { Countdown } from "./Countdown";
 import { PlayerAvatar, PlayerName } from "./Player";
+import { useHostLabel } from "./TournamentBoard";
 
 interface CardProps {
   competition: Competition;
@@ -196,6 +197,7 @@ export function TournamentCard({ competition, onPress }: CardProps) {
   const myPubkey = useAuthStore((s) => s.pubkey);
   const action = tournamentAction(competition);
   const footer = tournamentFooter(competition, myPubkey);
+  const host = useHostLabel(competition.creatorPubkey, competition.createdByMe);
 
   return (
     <Pressable
@@ -213,7 +215,7 @@ export function TournamentCard({ competition, onPress }: CardProps) {
             {competition.name}
           </Text>
           <Text style={styles.host} numberOfLines={1}>
-            Hosted by {competition.createdByMe ? "you" : shortAddress(competition.creatorPubkey)}
+            Hosted by {host}
           </Text>
         </View>
       </View>

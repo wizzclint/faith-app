@@ -20,7 +20,8 @@ const PRIZE_SPLITS = [
   { label: "60 / 30 / 10", bps: [6000, 3000, 1000] },
   { label: "50 / 30 / 20", bps: [5000, 3000, 2000] },
 ];
-const ADMIN_FEES_BPS = [0, 500, 1000];
+const ADMIN_FEES_BPS = [0, 200, 500, 1000];
+const DEFAULT_ADMIN_FEE_BPS = 200;
 const PLAYER_CAPS = [5, 10, 20];
 const MAX_DAYS = 30;
 
@@ -48,7 +49,7 @@ export function TournamentForm() {
   const [startsInMin, setStartsInMin] = useState("0");
   const [maxPlayers, setMaxPlayers] = useState("");
   const [minPlayers, setMinPlayers] = useState("2");
-  const [feeBps, setFeeBps] = useState(0);
+  const [feeBps, setFeeBps] = useState(DEFAULT_ADMIN_FEE_BPS);
 
   const [stage, setStage] = useState<PayStage | null>(null);
   const [error, setError] = useState<string | null>(null);

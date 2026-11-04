@@ -16,10 +16,8 @@ export function SettingsScreen() {
   const cluster = config?.cluster ?? "devnet";
   const loaded = useSettingsStore((s) => s.loaded);
   const load = useSettingsStore((s) => s.load);
-  const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const musicEnabled = useSettingsStore((s) => s.musicEnabled);
-  const vibrationEnabled = useSettingsStore((s) => s.vibrationEnabled);
-  const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
+  const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggle = useSettingsStore((s) => s.toggle);
 
   useEffect(() => {
@@ -30,18 +28,8 @@ export function SettingsScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>GAME</Text>
       <View style={styles.section}>
-        <ToggleRow label="Sound Effects" value={soundEnabled} onValueChange={() => toggle("soundEnabled")} />
         <ToggleRow label="Music" value={musicEnabled} onValueChange={() => toggle("musicEnabled")} />
-        <ToggleRow
-          label="Vibration"
-          value={vibrationEnabled}
-          onValueChange={() => toggle("vibrationEnabled")}
-        />
-        <ToggleRow
-          label="Notifications"
-          value={notificationsEnabled}
-          onValueChange={() => toggle("notificationsEnabled")}
-        />
+        <ToggleRow label="Sound Effects" value={soundEnabled} onValueChange={() => toggle("soundEnabled")} />
       </View>
 
       <Text style={styles.sectionTitle}>ACCOUNT</Text>

@@ -212,8 +212,7 @@ export function CompetitionScreen() {
 
   const syncHint = (
     <Text style={styles.hint}>
-      Connect your wallet and tap SYNC WITH FAITH in the Wallet section of the Home screen to take
-      part.
+      Connect your wallet to join.
     </Text>
   );
 

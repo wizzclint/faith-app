@@ -5,6 +5,7 @@ import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { WalletSession } from "./src/utils/WalletSession";
 import { ConnectionProvider } from "./src/utils/ConnectionProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme as NavigationDarkTheme } from "@react-navigation/native";
@@ -49,6 +50,7 @@ export default function App() {
           <ConnectionProvider config={{ commitment: "processed" }}>
             <SafeAreaView style={styles.safeArea}>
               <PaperProvider theme={paperTheme}>
+                <WalletSession />
                 <AppNavigator />
               </PaperProvider>
             </SafeAreaView>

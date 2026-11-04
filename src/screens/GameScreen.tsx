@@ -1,12 +1,13 @@
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { RouteProp, useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, BackHandler, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, AppState, BackHandler, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { GameCanvas } from "../components/game/GameCanvas";
 import { GameHUD } from "../components/game/GameHUD";
 import { GameOverOverlay } from "../components/game/GameOverOverlay";
 import { PauseOverlay } from "../components/game/PauseOverlay";
 import { colors } from "../design/colors";
+import { useGameMusic } from "../game/audio/useGameMusic";
 import { soundManager } from "../game/audio/soundManager";
 import { LANE_COUNT, SWIPE_THRESHOLD_PX } from "../game/constants";
 import { useRunnerEngine } from "../game/engine/useRunnerEngine";
@@ -50,6 +51,7 @@ type Submission = "idle" | "sending" | "done" | "failed";
 
 export function GameScreen() {
   const navigation = useNavigation();
+  const focused = useIsFocused();
   /** Set when the run is one of the player's attempts in a competition. */
   const competition = useRoute<RouteProp<ReactNavigation.RootParamList, "Game">>().params;
   const { width, height } = useWindowDimensions();
@@ -69,6 +71,7 @@ export function GameScreen() {
   const [paused, setPaused] = useState(false);
   /** A competition run waits here until the server has issued its session. */
   const [starting, setStarting] = useState(!!competition);
+  useGameMusic(focused && status === "playing" && !paused && !starting);
   /** How a competition run was recorded, shown on the Run Complete card. */
   const [resultNote, setResultNote] = useState<string | null>(null);
   /** Which of the player's competition runs this is. */
@@ -263,6 +266,18 @@ export function GameScreen() {
     engine.stop();
     setPaused(true);
   };
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" && status === "playing" && !paused) {
+        engine.stop();
+        setPaused(true);
+      }
+    });
+    return () => subscription.remove();
+    // The engine object changes each render; status and paused own this subscription.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, paused]);
 
   const handleResume = () => {
     setPaused(false);

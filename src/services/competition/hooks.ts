@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useSyncExternalStore } from "react";
 import { useCluster } from "../../components/cluster/cluster-data-access";
 import { useAuthStore } from "../../store/authStore";
@@ -7,7 +7,13 @@ import { isWalletCancellation, walletErrorMessage } from "../../utils/walletErro
 import { api, ApiError } from "../api/client";
 import { useEntryPayment } from "../solana/entryPayment";
 import { PaymentPurpose, pendingEntries } from "./pendingEntries";
-import { Competition, CompetitionDetail, CreateCompetitionInput, ServerConfig } from "./types";
+import {
+  Competition,
+  CompetitionDetail,
+  CompetitionKind,
+  CreateCompetitionInput,
+  ServerConfig,
+} from "./types";
 
 const ROOT = "faith";
 const SUBMIT_ATTEMPTS = 4;
@@ -100,6 +106,24 @@ export function useRewards() {
     queryFn: () => api.rewards(),
     enabled: !!token,
     refetchInterval: 30_000,
+  });
+}
+
+/**
+ * The player's own finished competitions of one kind, a page at a time
+ * (newest first). Other players' results aren't listed: that list would only grow.
+ */
+export function useMyResults(kind: CompetitionKind, active: boolean) {
+  const token = useAuthStore((s) => s.token);
+  return useInfiniteQuery({
+    queryKey: [ROOT, "results", kind, token],
+    queryFn: ({ pageParam }) => api.myResults(kind, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => {
+      const oldest = last.results[last.results.length - 1];
+      return last.results.length < last.pageSize || !oldest?.finalizedAt ? undefined : oldest.finalizedAt;
+    },
+    enabled: !!token && active,
   });
 }
 
@@ -263,7 +287,7 @@ export function useCompetitionPayments() {
         selectedAccount.publicKey.toBase58() !== useAuthStore.getState().pubkey
       ) {
         throw new Error(
-          "Your connected wallet isn't the one synced with FAITH. Sync again on the Home screen."
+          "Your wallet changed. Reconnect it on Home to continue."
         );
       }
     },

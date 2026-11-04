@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import bs58 from "bs58";
+import { Buffer } from "buffer";
 import { create } from "zustand";
 import { setAuthToken, setUnauthorizedHandler } from "../services/api/authToken";
 import { api, ApiError } from "../services/api/client";
@@ -22,6 +23,9 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
+let authRevision = 0;
+let loadPromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   userId: null,
@@ -29,40 +33,55 @@ export const useAuthStore = create<AuthState>((set) => ({
   status: "idle",
   error: null,
 
-  load: async () => {
-    try {
-      const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      setAuthToken(parsed.token ?? null);
-      set({
-        token: parsed.token ?? null,
-        userId: parsed.userId ?? null,
-        pubkey: parsed.pubkey ?? null,
-        status: parsed.token ? "authenticated" : "idle",
-      });
-    } catch {
-      // Non-fatal — just starts signed out.
-    }
+  load: () => {
+    if (loadPromise) return loadPromise;
+    const revision = authRevision;
+    loadPromise = (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        if (!raw || revision !== authRevision) return;
+        const parsed = JSON.parse(raw);
+        const claims = parsed.token ? JSON.parse(Buffer.from(parsed.token.split(".")[1], "base64").toString()) : null;
+        if (!claims?.exp || claims.exp * 1000 <= Date.now() || claims.pubkey !== parsed.pubkey) {
+          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+          return;
+        }
+        setAuthToken(parsed.token ?? null);
+        set({
+          token: parsed.token ?? null,
+          userId: parsed.userId ?? null,
+          pubkey: parsed.pubkey ?? null,
+          status: parsed.token ? "authenticated" : "idle",
+        });
+      } catch {
+        // Non-fatal — just starts signed out.
+      }
+    })();
+    return loadPromise;
   },
 
   signIn: async (pubkeyBase58, signMessage) => {
-    set({ status: "signing", error: null });
+    const revision = ++authRevision;
+    setAuthToken(null);
+    set({ token: null, userId: null, pubkey: null, status: "signing", error: null });
     try {
       const { message, nonce } = await api.challenge(pubkeyBase58);
       const messageBytes = new TextEncoder().encode(message);
       const signatureBytes = await signMessage(messageBytes);
+      if (revision !== authRevision) return;
       const signatureB58 = bs58.encode(signatureBytes);
 
       const { token, user } = await api.verify(pubkeyBase58, nonce, signatureB58);
 
+      if (revision !== authRevision) return;
       setAuthToken(token);
       set({ token, userId: user.id, pubkey: user.pubkey, status: "authenticated", error: null });
       await AsyncStorage.setItem(
         AUTH_STORAGE_KEY,
         JSON.stringify({ token, userId: user.id, pubkey: user.pubkey })
-      );
+      ).catch(() => {});
     } catch (err) {
+      if (revision !== authRevision) return;
       // Backing out in the wallet is a choice, not a failure: just go back to the button.
       if (!(err instanceof ApiError) && isWalletCancellation(err)) {
         set({ status: "idle", error: null });
@@ -78,6 +97,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    authRevision += 1;
     setAuthToken(null);
     set({ token: null, userId: null, pubkey: null, status: "idle", error: null });
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});

@@ -13,6 +13,7 @@ import {
 import { toUint8Array } from "js-base64";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { LEGAL_SITE } from "../config/links";
 
 const CHAIN = "solana";
 const CLUSTER = "devnet";
@@ -96,9 +97,17 @@ async function persistAuthorization(
   await AsyncStorage.setItem(AUTHORIZATION_STORAGE_KEY, JSON.stringify(auth));
 }
 
+/**
+ * Who the app says it is when a wallet is asked to connect. Wallets such as
+ * Phantom refuse an app they can't verify, by checking that `uri` publishes
+ * this app's package and signing certificate in /.well-known/assetlinks.json
+ * (see legal-site). A new signing key needs that file updated. The icon is
+ * resolved against `uri`.
+ */
 export const APP_IDENTITY = {
-  name: "Solana Mobile Expo Template",
-  uri: "https://fakedomain.com",
+  name: "FAITH RUN",
+  uri: LEGAL_SITE,
+  icon: "icon.png",
 };
 
 export function useAuthorization() {
@@ -107,10 +116,10 @@ export function useAuthorization() {
     queryKey: ["wallet-authorization"],
     queryFn: () => fetchAuthorization(),
   });
-  const { mutate: setAuthorization } = useMutation({
+  const { mutateAsync: setAuthorization } = useMutation({
     mutationFn: persistAuthorization,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallet-authorization"] });
+    onSuccess: (_result, nextAuthorization) => {
+      queryClient.setQueryData(["wallet-authorization"], nextAuthorization);
     },
   });
 
@@ -127,30 +136,44 @@ export function useAuthorization() {
     },
     [authorization]
   );
-  const authorizeSession = useCallback(
-    async (wallet: AuthorizeAPI) => {
-      const authorizationResult = await wallet.authorize({
+  /**
+   * Authorizes with the saved token when there is one, so the wallet can skip
+   * its prompt. A wallet can refuse a saved token (it expired, or it came from
+   * a different wallet app), so a refusal is retried once without it, which
+   * asks the player to approve again.
+   */
+  const authorizeWithFallback = useCallback(
+    async (wallet: AuthorizeAPI, signInPayload?: SignInPayload) => {
+      const request = {
         identity: APP_IDENTITY,
         chain: CHAIN_IDENTIFIER,
-        auth_token: authorization?.authToken,
-      });
+        ...(signInPayload ? { sign_in_payload: signInPayload } : {}),
+      } as const;
+      const savedToken = authorization?.authToken;
+      if (!savedToken) return wallet.authorize(request);
+      try {
+        return await wallet.authorize({ ...request, auth_token: savedToken });
+      } catch {
+        return wallet.authorize(request);
+      }
+    },
+    [authorization]
+  );
+  const authorizeSession = useCallback(
+    async (wallet: AuthorizeAPI) => {
+      const authorizationResult = await authorizeWithFallback(wallet);
       return (await handleAuthorizationResult(authorizationResult))
         .selectedAccount;
     },
-    [authorization, handleAuthorizationResult]
+    [authorizeWithFallback, handleAuthorizationResult]
   );
   const authorizeSessionWithSignIn = useCallback(
     async (wallet: AuthorizeAPI, signInPayload: SignInPayload) => {
-      const authorizationResult = await wallet.authorize({
-        identity: APP_IDENTITY,
-        chain: CHAIN_IDENTIFIER,
-        auth_token: authorization?.authToken,
-        sign_in_payload: signInPayload,
-      });
+      const authorizationResult = await authorizeWithFallback(wallet, signInPayload);
       return (await handleAuthorizationResult(authorizationResult))
         .selectedAccount;
     },
-    [authorization, handleAuthorizationResult]
+    [authorizeWithFallback, handleAuthorizationResult]
   );
   const deauthorizeSession = useCallback(
     async (wallet: DeauthorizeAPI) => {
@@ -171,6 +194,6 @@ export function useAuthorization() {
       selectedAccount: authorization?.selectedAccount ?? null,
       isLoading,
     }),
-    [authorization, authorizeSession, deauthorizeSession]
+    [authorization, authorizeSession, authorizeSessionWithSignIn, deauthorizeSession, isLoading]
   );
 }

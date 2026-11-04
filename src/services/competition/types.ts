@@ -49,6 +49,8 @@ export interface Competition {
   startsAt: string;
   endsAt: string;
   matchedAt: string | null;
+  /** When it settled or was called off; the Results tabs page by this. */
+  finalizedAt: string | null;
   /** What the caller, as creator, still has to pay in before this opens. */
   fundingDueLamports: number | null;
   /** Null when signed out or not entered. */
@@ -71,6 +73,8 @@ export interface CompetitionPlayer {
   isMe: boolean;
   /** True for FAITH's own automated opponent. */
   isHouse: boolean;
+  /** Ruled out by an admin: every run counts 0. */
+  disqualified: boolean;
   totalScore: number;
   runsCompleted: number;
   runs: CompetitionRun[];
@@ -81,6 +85,9 @@ export interface HouseMatchInfo {
   /** 1 (weakest) to 10. */
   level: number;
   typicalRunScore: number;
+  /** Its estimated chance of winning this match, worked out when it took the seat. */
+  estimatedWinRatePct: number;
+  /** The share of matches it is currently tuned to win overall. */
   targetWinRatePct: number;
 }
 
@@ -129,6 +136,8 @@ export interface Reward {
   /** Solana's transaction fee, taken out of the payout: the wallet receives lamports minus this. */
   networkFeeLamports: number;
   status: "PENDING" | "SENDING" | "PAID";
+  /** Over the automatic payout limit: FAITH approves it before it's sent. Still PENDING meanwhile. */
+  awaitingApproval?: boolean;
   payoutSignature: string | null;
   createdAt: string;
   paidAt: string | null;
@@ -139,6 +148,8 @@ export interface RewardSummary {
   lockedLamports: number;
   /** Prizes and refunds waiting to be claimed. */
   pendingLamports: number;
+  /** The part of pending that's waiting for FAITH's approval. */
+  awaitingApprovalLamports?: number;
   /** Prizes already paid out. */
   earnedLamports: number;
   rewards: Reward[];

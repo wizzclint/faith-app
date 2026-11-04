@@ -77,23 +77,29 @@ export function WalletSummary({ address }: { address: PublicKey }) {
     setMessage(null);
     let sent = 0;
     let stillSending = 0;
+    let awaiting = 0;
     let problem: string | null = null;
     for (const reward of claimable) {
       try {
         const { reward: result } = await api.claimReward(reward.id);
         if (result.status === "PAID") sent += result.lamports - result.networkFeeLamports;
+        else if (result.status === "PENDING" && result.awaitingApproval) awaiting += result.lamports;
         else stillSending += 1;
       } catch (err) {
         problem =
           err instanceof ApiError ? err.message : "Couldn't reach the FAITH servers. Try again.";
       }
     }
-    if (problem) setMessage({ text: problem, tone: "error" });
-    else if (stillSending > 0) {
-      setMessage({ text: "Your payout is on its way. It can take a minute to show in your wallet.", tone: "info" });
-    } else if (sent > 0) {
-      setMessage({ text: `Sent ${formatSol(sent)} to your wallet.`, tone: "info" });
+    const parts: string[] = [];
+    if (sent > 0) parts.push(`Sent ${formatSol(sent)} to your wallet.`);
+    if (stillSending > 0) parts.push("A payout is on its way. It can take a minute to show in your wallet.");
+    if (awaiting > 0) {
+      parts.push(
+        `${formatSol(awaiting)} is waiting for FAITH's approval: larger payouts are checked before they're sent. It'll arrive in your wallet once approved.`
+      );
     }
+    if (problem) setMessage({ text: problem, tone: "error" });
+    else if (parts.length > 0) setMessage({ text: parts.join(" "), tone: "info" });
     await refresh();
     balance.refetch();
     setWithdrawing(false);
@@ -141,10 +147,12 @@ export function WalletSummary({ address }: { address: PublicKey }) {
 
       <Text style={styles.footnote}>
         {!synced
-          ? "Tap SYNC WITH FAITH above to see your game balance and rewards."
-          : claimable.length > 0
-            ? "WITHDRAW sends your pending prizes and refunds to this wallet. Solana's small network fee comes out of each payout."
-            : "Stakes and entry fees are paid straight from this wallet. Prizes and refunds wait under Pending Rewards until you withdraw them."}
+          ? "Finish connecting to view game balances."
+          : (rewards?.awaitingApprovalLamports ?? 0) > 0
+            ? `${formatSol(rewards!.awaitingApprovalLamports!)} of your pending rewards is waiting for FAITH's approval and will be sent once approved. Solana's small network fee comes out of each payout.`
+            : claimable.length > 0
+            ? "Withdraw rewards to your wallet. Larger payouts need approval; network fees apply."
+            : "Entries are paid from your wallet. Withdraw prizes from Pending Rewards."}
         {cluster !== "mainnet-beta" ? ` ${cluster} SOL is test money with no real-world value.` : ""}
       </Text>
 

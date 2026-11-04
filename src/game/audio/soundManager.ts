@@ -4,7 +4,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 /**
  * Every sound effect FAITH RUN plays. All placeholder CC0 assets (see
  * assets/audio/ATTRIBUTION.md) — swappable later without touching any of
- * the call sites below. No background music track yet.
+ * the call sites below. Music is managed separately by useGameMusic.
  *
  * One player per sound, restarted from 0 on each trigger — simple and fine
  * for short, mostly non-overlapping SFX. A rapid-fire event (many coins in

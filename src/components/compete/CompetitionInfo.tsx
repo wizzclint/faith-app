@@ -140,8 +140,15 @@ export function HouseCard({
       <View style={styles.houseStats}>
         <HouseStat label="LEVEL" value={`${detail.house.level} of 10`} />
         <HouseStat label="TYPICAL RUN" value={`~${detail.house.typicalRunScore.toLocaleString()}`} />
-        <HouseStat label="TUNED TO WIN" value={`${detail.house.targetWinRatePct}%`} />
+        <HouseStat
+          label="CHANCE IT WINS"
+          value={`~${detail.house.estimatedWinRatePct ?? detail.house.targetWinRatePct}%`}
+        />
       </View>
+      <Text style={styles.houseNote}>
+        Its expected chance of beating you in this match, worked out from your recent scores when it
+        took the seat.
+      </Text>
       <BulletList lines={houseDisclosure(config, staked, true)} />
     </View>
   );
@@ -328,6 +335,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     marginTop: 2,
+  },
+  houseNote: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   result: {
     backgroundColor: colors.surface,

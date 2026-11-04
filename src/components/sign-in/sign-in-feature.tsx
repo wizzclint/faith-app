@@ -8,8 +8,7 @@ export function SignInFeature() {
   return (
     <View style={styles.block}>
       <Text style={styles.body}>
-        Playing is free and needs no wallet. Connect a Solana wallet to put your scores on the
-        leaderboard, play head-to-heads and tournaments, and collect what you win.
+        Play free, or connect your wallet to compete and save leaderboard scores.
       </Text>
       <ConnectButton />
     </View>

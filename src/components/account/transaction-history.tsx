@@ -39,7 +39,7 @@ export function WalletHistory({ address }: { address: PublicKey }) {
       <Text style={styles.sectionLabel}>TRANSACTION HISTORY</Text>
 
       {!synced ? (
-        <Text style={styles.muted}>Sync with FAITH to see your stakes, entries and payouts here.</Text>
+        <Text style={styles.muted}>Finish connecting to view your history.</Text>
       ) : isLoading ? (
         <Text style={styles.muted}>Loading…</Text>
       ) : isError ? (
@@ -49,8 +49,7 @@ export function WalletHistory({ address }: { address: PublicKey }) {
       ) : !data || data.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.muted}>
-            No SOL has moved between your wallet and FAITH yet. Free matches and free tournaments
-            don't appear here.
+            No transactions yet.
           </Text>
         </View>
       ) : (

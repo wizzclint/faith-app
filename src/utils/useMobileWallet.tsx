@@ -7,15 +7,34 @@ import {
 } from "@solana/web3.js";
 import { useCallback, useMemo } from "react";
 import { SignInPayload } from "@solana-mobile/mobile-wallet-adapter-protocol";
+import { useAuthStore } from "../store/authStore";
+
+let connectionInFlight: Promise<Account> | null = null;
 
 export function useMobileWallet() {
   const { authorizeSessionWithSignIn, authorizeSession, deauthorizeSession } =
     useAuthorization();
 
   const connect = useCallback(async (): Promise<Account> => {
-    return await transact(async (wallet) => {
-      return await authorizeSession(wallet);
-    });
+    if (connectionInFlight) return connectionInFlight;
+    connectionInFlight = transact(async (wallet) => {
+      await useAuthStore.getState().load();
+      const account = await authorizeSession(wallet);
+      const pubkey = account.publicKey.toBase58();
+      const auth = useAuthStore.getState();
+      if (auth.pubkey !== pubkey) await auth.signOut();
+      if (useAuthStore.getState().status !== "authenticated") {
+        await useAuthStore.getState().signIn(pubkey, async (message) => {
+          const signed = await wallet.signMessages({
+            addresses: [account.address],
+            payloads: [message],
+          });
+          return signed[0].slice(-64);
+        });
+      }
+      return account;
+    }).then(account => account).finally(() => { connectionInFlight = null; });
+    return connectionInFlight;
   }, [authorizeSession]);
 
   const signIn = useCallback(
@@ -24,13 +43,14 @@ export function useMobileWallet() {
         return await authorizeSessionWithSignIn(wallet, signInPayload);
       });
     },
-    [authorizeSession]
+    [authorizeSessionWithSignIn]
   );
 
   const disconnect = useCallback(async (): Promise<void> => {
     await transact(async (wallet) => {
       await deauthorizeSession(wallet);
     });
+    await useAuthStore.getState().signOut();
   }, [deauthorizeSession]);
 
   const signAndSendTransaction = useCallback(
@@ -58,7 +78,7 @@ export function useMobileWallet() {
           addresses: [authResult.address],
           payloads: [message],
         });
-        return signedMessages[0];
+        return signedMessages[0].slice(-64);
       });
     },
     [authorizeSession]
@@ -72,6 +92,6 @@ export function useMobileWallet() {
       signAndSendTransaction,
       signMessage,
     }),
-    [signAndSendTransaction, signMessage]
+    [connect, signIn, disconnect, signAndSendTransaction, signMessage]
   );
 }

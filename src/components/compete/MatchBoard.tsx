@@ -21,6 +21,7 @@ function isOver(detail: CompetitionDetail): boolean {
 
 /** What a player is doing right now: mid-run, runs still to play, or done. */
 function progressLabel(player: CompetitionPlayer, attemptsAllowed: number): string {
+  if (player.disqualified) return "DISQUALIFIED";
   const playing = player.runs.find((run) => run.status === "ACTIVE");
   if (playing) return `PLAYING RUN ${playing.attempt}`;
   const left = attemptsAllowed - player.runs.length;
@@ -70,8 +71,16 @@ function PlayerColumn({
       >
         {player.totalScore.toLocaleString()}
       </Text>
-      <Text style={[styles.progress, won && styles.progressWon]}>
-        {won ? "WINNER" : isOver(detail) ? "TOTAL" : progressLabel(player, detail.attemptsAllowed)}
+      <Text
+        style={[styles.progress, won && styles.progressWon, player.disqualified && styles.progressOut]}
+      >
+        {won
+          ? "WINNER"
+          : player.disqualified
+            ? "DISQUALIFIED"
+            : isOver(detail)
+              ? "TOTAL"
+              : progressLabel(player, detail.attemptsAllowed)}
       </Text>
     </View>
   );
@@ -102,6 +111,7 @@ export function MatchBoard({ detail }: { detail: CompetitionDetail }) {
             pubkey: competition.creatorPubkey,
             isMe: competition.createdByMe,
             isHouse: false,
+            disqualified: false,
             totalScore: 0,
             runsCompleted: 0,
             runs: [],
@@ -260,6 +270,9 @@ const styles = StyleSheet.create({
   },
   progressWon: {
     color: colors.accent,
+  },
+  progressOut: {
+    color: colors.danger,
   },
   runs: {
     marginTop: spacing.lg,

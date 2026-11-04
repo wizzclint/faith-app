@@ -4,63 +4,25 @@ import { colors } from "../../design/colors";
 import { FaithButton } from "../ui/FaithButton";
 import { useAuthStore } from "../../store/authStore";
 import { useAuthorization } from "../../utils/useAuthorization";
-import { useMobileWallet } from "../../utils/useMobileWallet";
+import { useConnectWallet } from "../sign-in/sign-in-ui";
 
-/**
- * Runs the real challenge → wallet-sign → verify handshake against
- * faith-server (see src/store/authStore.ts). Separate from the template's
- * own Connect/Sign-in buttons — those authorize the wallet for on-chain
- * actions; this authenticates the player with FAITH's own backend so
- * scores/leaderboard can be tied to their wallet identity.
- */
+/** Connection signs the player in automatically; only show progress or recovery. */
 export function FaithSyncButton() {
   const { selectedAccount } = useAuthorization();
-  const { signMessage } = useMobileWallet();
+  const { connect, connecting } = useConnectWallet();
   const status = useAuthStore((s) => s.status);
   const error = useAuthStore((s) => s.error);
-  const signIn = useAuthStore((s) => s.signIn);
-
-  if (!selectedAccount) return null;
-
-  if (status === "authenticated") {
-    return (
-      <View style={styles.row}>
-        <Text style={styles.synced}>✓ Synced. Your scores now count on the leaderboard.</Text>
-      </View>
-    );
-  }
-
-  const handlePress = () => {
-    signIn(selectedAccount.publicKey.toBase58(), signMessage);
-  };
-
+  if (!selectedAccount || status === "authenticated") return null;
+  const busy = connecting || status === "signing";
   return (
     <View style={styles.row}>
-      <FaithButton
-        label={status === "signing" ? "SIGNING…" : "SYNC WITH FAITH"}
-        onPress={handlePress}
-        disabled={status === "signing"}
-        variant="secondary"
-      />
-      {status === "error" && error && <Text style={styles.error}>{error}</Text>}
+      <FaithButton label={busy ? "CONNECTING…" : "FINISH CONNECTING"}
+        onPress={connect} disabled={busy} variant="secondary" />
+      {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  row: {
-    marginTop: 12,
-  },
-  synced: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: "center",
-  },
+  row: { marginTop: 12 },
+  error: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: "center" },
 });

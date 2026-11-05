@@ -13,11 +13,8 @@ import {
 import { toUint8Array } from "js-base64";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { useCluster } from "../components/cluster/cluster-data-access";
 import { LEGAL_SITE } from "../config/links";
-
-const CHAIN = "solana";
-const CLUSTER = "devnet";
-const CHAIN_IDENTIFIER = `${CHAIN}:${CLUSTER}`;
 
 export type Account = Readonly<{
   address: Base64EncodedAddress;
@@ -112,6 +109,7 @@ export const APP_IDENTITY = {
 
 export function useAuthorization() {
   const queryClient = useQueryClient();
+  const { selectedCluster } = useCluster();
   const { data: authorization, isLoading } = useQuery({
     queryKey: ["wallet-authorization"],
     queryFn: () => fetchAuthorization(),
@@ -146,7 +144,7 @@ export function useAuthorization() {
     async (wallet: AuthorizeAPI, signInPayload?: SignInPayload) => {
       const request = {
         identity: APP_IDENTITY,
-        chain: CHAIN_IDENTIFIER,
+        chain: `solana:${selectedCluster.network}`,
         ...(signInPayload ? { sign_in_payload: signInPayload } : {}),
       } as const;
       const savedToken = authorization?.authToken;
@@ -157,7 +155,7 @@ export function useAuthorization() {
         return wallet.authorize(request);
       }
     },
-    [authorization]
+    [authorization, selectedCluster.network]
   );
   const authorizeSession = useCallback(
     async (wallet: AuthorizeAPI) => {

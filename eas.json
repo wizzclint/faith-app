@@ -6,16 +6,26 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SOLANA_CLUSTER": "devnet"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SOLANA_CLUSTER": "devnet"
+      }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SOLANA_CLUSTER": "devnet"
+      }
+    }
   },
   "submit": {
     "production": {}

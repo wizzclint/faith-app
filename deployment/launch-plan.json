@@ -1,0 +1,14 @@
+{
+  "status": "preparing",
+  "treasuryPublicAddress": "65E884ko4gtvQZQUgNBSuhnnXtMut9R24g2EAV4gP1st",
+  "intendedCountryReach": "worldwide",
+  "legalReviewStatus": "not provided",
+  "realMoneyEnabled": false,
+  "headToHead": {
+    "minimumStakeLamports": 1000000,
+    "maximumStakeLamports": 1000000000,
+    "platformFeeBps": 200
+  },
+  "playerTournamentFeeBps": 200,
+  "note": "Preparation record only. Worldwide reach is a requested scope, not approval for paid play in every country. Existing live treasury and settings are unchanged."
+}

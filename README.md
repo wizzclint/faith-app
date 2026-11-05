@@ -57,3 +57,11 @@ package `com.faitharcade.faithrun` and the APK's signing certificate fingerprint
 Verify terms, privacy and wallet app verification on-device before release.
 Real-money play remains a separate release requiring consistent mainnet
 configuration, stronger anti-cheat and the server's real-money gate.
+
+## Release network
+
+`EXPO_PUBLIC_SOLANA_CLUSTER` selects devnet, testnet or mainnet-beta for both
+wallet authorization and the payment RPC. It defaults to devnet. An optional
+`EXPO_PUBLIC_SOLANA_RPC_URL` must use HTTPS and is public in the binary.
+The EAS profiles currently pin devnet until the mainnet launch checks finish.
+A build/server network mismatch blocks payments before opening the wallet.

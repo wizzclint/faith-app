@@ -280,7 +280,7 @@ export function useCompetitionPayments() {
         throw new Error("Paid competitions are unavailable right now.");
       }
       if (selectedCluster.network !== config.cluster) {
-        throw new Error(`Switch the app's network to ${config.cluster} in Settings first.`);
+        throw new Error(`This build uses ${selectedCluster.network}, but the server uses ${config.cluster}. Install the matching build before paying.`);
       }
       if (
         !selectedAccount ||

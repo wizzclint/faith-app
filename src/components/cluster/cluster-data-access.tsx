@@ -1,5 +1,6 @@
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
+import { solanaNetwork } from "../../config/network";
 import { createContext, ReactNode, useContext, useMemo, useState } from "react";
 
 export interface Cluster {
@@ -32,6 +33,11 @@ export function toWalletAdapterNetwork(
 
 export const defaultClusters: Readonly<Cluster[]> = [
   {
+    name: "mainnet-beta",
+    endpoint: clusterApiUrl("mainnet-beta"),
+    network: ClusterNetwork.Mainnet,
+  },
+  {
     name: "devnet",
     endpoint: clusterApiUrl("devnet"),
     network: ClusterNetwork.Devnet,
@@ -56,7 +62,11 @@ const Context = createContext<ClusterProviderContext>(
 
 export function ClusterProvider({ children }: { children: ReactNode }) {
   const [selectedCluster, setSelectedCluster] = useState<Cluster>(
-    defaultClusters[0]
+    {
+      name: solanaNetwork.cluster,
+      endpoint: solanaNetwork.endpoint,
+      network: solanaNetwork.cluster as ClusterNetwork,
+    }
   );
   const clusters = [...defaultClusters];
 

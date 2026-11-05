@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "build": "npx eas build --profile development --platform android",
     "build:local": "npx eas build --profile development --platform android --local",
-    "test": "node scripts/wallet-flow-test.cjs && node scripts/music-test.cjs",
+    "test": "node scripts/wallet-flow-test.cjs && node scripts/music-test.cjs && node scripts/network-test.cjs",
     "typecheck": "tsc --noEmit",
     "build:production": "npx eas build --profile production --platform android",
     "build:preview": "npx eas build --profile preview --platform android"

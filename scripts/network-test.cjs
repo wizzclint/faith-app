@@ -35,5 +35,26 @@ function load(file, mocks, env = {}) {
   assert.equal(resolveNetwork("mainnet-beta", "https://rpc.example.test").endpoint, "https://rpc.example.test");
   assert.throws(() => resolveNetwork("typo"), /Unsupported/);
   assert.throws(() => resolveNetwork("devnet", "http://rpc.example.test"), /HTTPS/);
+  const { resolveApiBaseUrl } = load("src/services/api/config.ts", {});
+  assert.equal(resolveApiBaseUrl(), "https://faith-server-eta.vercel.app");
+  assert.throws(() => resolveApiBaseUrl(undefined, "mainnet-beta"), /separate mainnet/);
+  assert.throws(() => resolveApiBaseUrl("https://faith-server-eta.vercel.app/", "mainnet-beta"), /separate mainnet/);
+  assert.throws(() => resolveApiBaseUrl("http://mainnet.example.test", "mainnet-beta"), /HTTPS/);
+  assert.equal(resolveApiBaseUrl("https://mainnet.example.test/", "mainnet-beta"), "https://mainnet.example.test");
+  const configure = require("../app.config.js");
+  const oldCluster = process.env.EXPO_PUBLIC_SOLANA_CLUSTER;
+  const oldApi = process.env.EXPO_PUBLIC_API_URL;
+  try {
+    process.env.EXPO_PUBLIC_SOLANA_CLUSTER = "mainnet-beta";
+    delete process.env.EXPO_PUBLIC_API_URL;
+    assert.throws(() => configure({ config: {} }), /separate HTTPS mainnet/);
+    process.env.EXPO_PUBLIC_API_URL = "https://mainnet.example.test";
+    const config = { name: "FAITH RUN" };
+    assert.equal(configure({ config }), config);
+  } finally {
+    if (oldCluster === undefined) delete process.env.EXPO_PUBLIC_SOLANA_CLUSTER; else process.env.EXPO_PUBLIC_SOLANA_CLUSTER = oldCluster;
+    if (oldApi === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = oldApi;
+  }
+  console.log("PASS mainnet builds require an isolated HTTPS API and cannot silently use devnet");
   console.log("PASS wallet chain and RPC agree on devnet, testnet and mainnet; invalid configurations fail");
 })().catch(e => { console.error(e); process.exitCode = 1; });

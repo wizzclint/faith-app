@@ -63,5 +63,26 @@ configuration, stronger anti-cheat and the server's real-money gate.
 `EXPO_PUBLIC_SOLANA_CLUSTER` selects devnet, testnet or mainnet-beta for both
 wallet authorization and the payment RPC. It defaults to devnet. An optional
 `EXPO_PUBLIC_SOLANA_RPC_URL` must use HTTPS and is public in the binary.
-The EAS profiles currently pin devnet until the mainnet launch checks finish.
+Development and preview use devnet. Production and mainnet-preview use
+mainnet-beta and require EXPO_PUBLIC_API_URL for the isolated mainnet backend.
 A build/server network mismatch blocks payments before opening the wallet.
+
+## Real-SOL test setup
+
+The requested server setting is `ALLOW_REAL_MONEY=true` on mainnet. The pending
+server configuration records the supplied treasury and 2% fees. It must be
+applied to the isolated mainnet deployment, with a separate database and JWT
+secret. Existing devnet settings are not migrated into that database.
+
+Set `EXPO_PUBLIC_API_URL` in the EAS production environment before running
+the mainnet profiles. Devnet preview continues using its separate preview
+environment:
+
+```sh
+eas build --profile mainnet-preview --platform android
+```
+
+The config check fails before upload when the mainnet API is missing or points
+to the existing devnet server. Payout mode and treasury funding still need to
+be finalized. Run an actual entry, settlement, refund and withdrawal test on
+mainnet before treating this as a completed real-money test.

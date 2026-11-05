@@ -23,8 +23,16 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_SOLANA_CLUSTER": "devnet"
-      }
+        "EXPO_PUBLIC_SOLANA_CLUSTER": "mainnet-beta"
+      },
+      "environment": "production"
+    },
+    "mainnet-preview": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_SOLANA_CLUSTER": "mainnet-beta"
+      },
+      "environment": "production"
     }
   },
   "submit": {

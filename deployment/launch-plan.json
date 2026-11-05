@@ -1,14 +1,20 @@
 {
-  "status": "preparing",
+  "status": "preparing-mainnet-test",
   "treasuryPublicAddress": "65E884ko4gtvQZQUgNBSuhnnXtMut9R24g2EAV4gP1st",
   "intendedCountryReach": "worldwide",
   "legalReviewStatus": "not provided",
-  "realMoneyEnabled": false,
   "headToHead": {
     "minimumStakeLamports": 1000000,
     "maximumStakeLamports": 1000000000,
     "platformFeeBps": 200
   },
   "playerTournamentFeeBps": 200,
-  "note": "Preparation record only. Worldwide reach is a requested scope, not approval for paid play in every country. Existing live treasury and settings are unchanged."
+  "note": "Requested real-SOL test configuration. Not yet deployed. Worldwide reach is requested; legal review status has not been supplied. Existing devnet data and treasury are unchanged.",
+  "realMoneyRequested": true,
+  "mainnetTestConfiguration": {
+    "SOLANA_CLUSTER": "mainnet-beta",
+    "ALLOW_REAL_MONEY": true,
+    "databaseIsolation": "separate mainnet database required",
+    "payoutMode": "awaiting user choice"
+  }
 }

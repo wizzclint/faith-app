@@ -1,0 +1,10 @@
+{
+  "treasuryPublicAddress": "65E884ko4gtvQZQUgNBSuhnnXtMut9R24g2EAV4gP1st",
+  "payoutPublicAddress": "7oJNfDv2uo4JuhJ9UvT8JQmLU8FdJ98v6x4qZnrYh4uy",
+  "payoutMode": "separate automatic payout wallet",
+  "treasuryKeyOnServer": false,
+  "automaticPayoutMaxSol": 0.5,
+  "automaticPayoutDailyMaxSol": 5,
+  "fundedByThisSetup": false,
+  "keyStorage": "Vercel write-only secret; Windows DPAPI encrypted local backup"
+}

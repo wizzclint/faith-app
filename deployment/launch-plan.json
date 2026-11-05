@@ -1,5 +1,5 @@
 {
-  "status": "preparing-mainnet-test",
+  "status": "mainnet-services-verified-awaiting-funded-phone-test",
   "treasuryPublicAddress": "65E884ko4gtvQZQUgNBSuhnnXtMut9R24g2EAV4gP1st",
   "intendedCountryReach": "worldwide",
   "legalReviewStatus": "not provided",
@@ -9,12 +9,18 @@
     "platformFeeBps": 200
   },
   "playerTournamentFeeBps": 200,
-  "note": "Requested real-SOL test configuration. Not yet deployed. Worldwide reach is requested; legal review status has not been supplied. Existing devnet data and treasury are unchanged.",
+  "note": "Isolated mainnet API and owner login verified. Dedicated payout wallet remains unfunded. Phone wallet, stake and withdrawal testing plus legal review remain outstanding.",
   "realMoneyRequested": true,
   "mainnetTestConfiguration": {
     "SOLANA_CLUSTER": "mainnet-beta",
     "ALLOW_REAL_MONEY": true,
-    "databaseIsolation": "separate mainnet database required",
-    "payoutMode": "awaiting user choice"
+    "databaseIsolation": "faith_run_mainnet (initialized separately from devnet)",
+    "payoutMode": "separate automatic payout wallet",
+    "payoutPublicAddress": "7oJNfDv2uo4JuhJ9UvT8JQmLU8FdJ98v6x4qZnrYh4uy",
+    "automaticPayoutMaxSol": 0.5,
+    "automaticPayoutDailyMaxSol": 5,
+    "treasuryKeyOnServer": false,
+    "apiUrl": "https://faith-server-mainnet.vercel.app",
+    "adminUrl": "https://faith-admin-mainnet.vercel.app"
   }
 }

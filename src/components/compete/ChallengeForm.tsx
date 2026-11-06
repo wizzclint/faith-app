@@ -235,8 +235,9 @@ export function ChallengeForm({ initialOpponent }: { initialOpponent: Opponent }
       />
       {config && staked && (
         <Text style={formStyles.footnote}>
-          Your wallet will open to approve the stake. This is {config.cluster} test SOL with no
-          real-world value. Winning is not guaranteed.
+          {config.cluster === "mainnet-beta"
+            ? "Your wallet will open to approve the stake in real SOL. Winning is not guaranteed."
+            : `Your wallet will open to approve the stake in ${config.cluster} test SOL, which has no real-world value. Winning is not guaranteed.`}
         </Text>
       )}
     </>

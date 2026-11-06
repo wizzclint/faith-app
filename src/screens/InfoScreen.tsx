@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinkRow } from "../components/ui/LinkRow";
 import { links } from "../config/links";
+import { solanaNetwork } from "../config/network";
 import { colors } from "../design/colors";
 import { spacing } from "../design/spacing";
 import { useServerConfig } from "../services/competition/hooks";
@@ -20,8 +21,7 @@ function helpSections(config: ServerConfig | undefined): Section[] {
   const runs = config?.attemptsPerPlayer ?? 3;
   const wait = config?.h2h.matchmakingWindowMin ?? 10;
   const play = config?.h2h.matchDurationMin ?? 10;
-  const winRate = config?.house.targetWinRatePct ?? 75;
-  const cluster = config?.cluster ?? "devnet";
+  const cluster = config?.cluster ?? solanaNetwork.cluster;
   return [
     {
       heading: "How to play",
@@ -53,7 +53,7 @@ function helpSections(config: ServerConfig | undefined): Section[] {
     {
       heading: "The house",
       body: [
-        `The house is FAITH's own automated player, always marked HOUSE. It is tuned to win about ${winRate}% of its matches, its level is set from your recent scores, and its runs are fixed before you play yours. Its real record is shown when you choose it.`,
+        "The house is FAITH's own automated player, always marked HOUSE. Its level is set from your recent scores, and its runs are fixed before you play yours. Its real record is shown when you choose it.",
       ],
     },
     {
@@ -81,13 +81,15 @@ function responsibleSections(config: ServerConfig | undefined): Section[] {
       heading: "Play for fun",
       body: [
         "Everything in FAITH RUN can be played for free. Staked matches and paid tournaments are optional.",
-        "FAITH RUN currently uses Solana devnet, where SOL has no real-world value. Real-money play will only be switched on after a legal review, with its own rules and limits.",
+        (config?.cluster ?? solanaNetwork.cluster) === "mainnet-beta"
+          ? "This build uses Solana mainnet. Paid entries use real SOL."
+          : `This build uses Solana ${config?.cluster ?? solanaNetwork.cluster}, where SOL is test money with no real-world value.`,
       ],
     },
     {
       heading: "Know the odds",
       body: [
-        `The house targets a ${config?.house.targetWinRatePct ?? 75}% win rate. Review its current odds before entering a match.`,
+        "The house is an automated opponent. Review the match details before entering; winning is not guaranteed.",
         "Only ever stake what you can afford to lose, and never stake to win back a loss.",
       ],
     },
@@ -113,7 +115,7 @@ function aboutSections(config: ServerConfig | undefined): Section[] {
     {
       heading: "This build",
       body: [
-        `Version ${APP_VERSION}. Network: Solana ${config?.cluster ?? "devnet"}.`,
+        `Version ${APP_VERSION}. Network: Solana ${config?.cluster ?? solanaNetwork.cluster}.`,
       ],
     },
   ];

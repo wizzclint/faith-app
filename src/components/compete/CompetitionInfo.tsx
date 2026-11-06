@@ -22,10 +22,9 @@ export function houseDisclosure(
   staked: boolean,
   seated = false
 ): string[] {
-  const winRate = config?.house.targetWinRatePct ?? 75;
   const lines = [
     "The HOUSE is FAITH's own automated player, not another person. It is always marked HOUSE.",
-    `It's tuned to win about ${winRate}% of its matches. Its level is set from your recent scores, or from everyone's if you've played fewer than five runs.`,
+    "Its level is set from your recent scores, or from everyone's if you've played fewer than five runs.",
     "Its three runs are set when it takes the seat, before you play yours, so your score can't change them.",
   ];
   if (!seated) {

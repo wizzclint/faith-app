@@ -59,7 +59,7 @@ function helpSections(config: ServerConfig | undefined): Section[] {
     {
       heading: "Tournaments",
       body: [
-        `Everyone gets ${runs} runs and the leaderboard ranks total scores. Prizes are split as shown on each tournament. Players can open up to 3 tournaments a month for up to 20 players each.`,
+        `FAITH hosts the tournaments. Join an event, play your ${runs} runs, and compete on total score. Entry fees and prize splits are shown on each tournament.`,
       ],
     },
     {

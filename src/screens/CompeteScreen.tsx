@@ -21,7 +21,6 @@ import { spacing } from "../design/spacing";
 import {
   isJoinable,
   useCompetitions,
-  useMe,
   useMyResults,
   useRefreshCompetitive,
   useServerConfig,
@@ -84,7 +83,6 @@ export function CompeteScreen() {
   const synced = useAuthStore((s) => s.status === "authenticated");
   const refresh = useRefreshCompetitive();
   const { data: config } = useServerConfig();
-  const { data: me } = useMe();
   const { data, isLoading, isError, isRefetching } = useCompetitions(focused);
 
   const [mode, setMode] = useState<Mode>("h2h");
@@ -115,9 +113,6 @@ export function CompeteScreen() {
     ...tournaments.filter((c) => isMine(c) && !isFinished(c)),
     ...tournaments.filter((c) => isMine(c) && isFinished(c)).reverse(),
   ];
-  const limit = me?.tournamentMonthlyLimit ?? null;
-  const created = me?.tournamentsCreatedThisMonth ?? 0;
-  const limitReached = limit !== null && created >= limit;
 
   const open = (competition: Competition) => navigation.navigate("Competition", { id: competition.id });
 
@@ -234,28 +229,10 @@ export function CompeteScreen() {
           ) : (
             <>
               <Text style={styles.lead}>
-                Events with a live leaderboard. {config?.attemptsPerPlayer ?? 3} runs each — the highest
+                Hosted by FAITH. {config?.attemptsPerPlayer ?? 3} runs each — the highest
                 total wins.
               </Text>
-              {synced ? (
-                <>
-                  <GlowButton
-                    label="CREATE TOURNAMENT"
-                    icon="trophy"
-                    disabled={limitReached}
-                    onPress={() => navigation.navigate("CreateCompetition", { kind: "TOURNAMENT" })}
-                  />
-                  {limit !== null && (
-                    <Text style={[styles.limit, limitReached && styles.limitReached]}>
-                      {limitReached
-                        ? `You've created ${limit} tournaments this month.`
-                        : `${created} of ${limit} created this month`}
-                    </Text>
-                  )}
-                </>
-              ) : (
-                syncNotice
-              )}
+              {!synced && syncNotice}
               <TabStrip
                 tabs={[
                   { key: "live", label: "LIVE", count: liveTournaments.length },
@@ -327,8 +304,8 @@ export function CompeteScreen() {
                 myTournaments,
                 "NONE YET",
                 synced
-                  ? "Tournaments you create or enter show up here."
-                  : "Sync your wallet to create or enter a tournament."
+                  ? "Tournaments you enter show up here."
+                  : "Connect your wallet to enter a tournament."
               )}
             {mode === "tournaments" && tournamentTab === "results" && (
               <ResultsList
@@ -412,16 +389,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
-  },
-  limit: {
-    color: colors.textMuted,
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: spacing.sm,
-  },
-  limitReached: {
-    color: colors.warning,
-    fontWeight: "700",
   },
   list: {
     marginTop: spacing.lg,

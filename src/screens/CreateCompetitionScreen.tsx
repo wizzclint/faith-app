@@ -1,12 +1,11 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import React, { useEffect } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 import { ChallengeForm } from "../components/compete/ChallengeForm";
-import { TournamentForm } from "../components/compete/TournamentForm";
 import { colors } from "../design/colors";
 import { spacing } from "../design/spacing";
 
-/** Starting a head-to-head (against the house or posted for players), or opening a tournament. */
+/** Players create challenges. Tournament hosting belongs to the admin dashboard. */
 export function CreateCompetitionScreen() {
   const navigation = useNavigation();
   const { kind, opponent } =
@@ -23,7 +22,9 @@ export function CreateCompetitionScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      {headToHead ? <ChallengeForm initialOpponent={opponent ?? "PLAYER"} /> : <TournamentForm />}
+      {headToHead ? <ChallengeForm initialOpponent={opponent ?? "PLAYER"} /> : (
+        <Text style={{ color: colors.textSecondary }}>Tournaments are hosted by FAITH. Join an event from the Tournaments tab.</Text>
+      )}
     </ScrollView>
   );
 }

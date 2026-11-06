@@ -191,6 +191,7 @@ export interface ServerConfig {
   /** The house's published strength and its real record so far. */
   house: { enabled: boolean; targetWinRatePct: number; played: number; won: number };
   tournament: {
+    hosting: "ADMIN_ONLY";
     userFeeBps: number;
     userMaxPerMonth: number;
     userMaxPlayers: number;

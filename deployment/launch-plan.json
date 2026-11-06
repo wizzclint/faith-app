@@ -8,7 +8,6 @@
     "maximumStakeLamports": 1000000000,
     "platformFeeBps": 200
   },
-  "playerTournamentFeeBps": 200,
   "note": "Isolated mainnet API and owner login verified. Dedicated payout wallet remains unfunded. Phone wallet, stake and withdrawal testing plus legal review remain outstanding.",
   "realMoneyRequested": true,
   "mainnetTestConfiguration": {
@@ -22,5 +21,7 @@
     "treasuryKeyOnServer": false,
     "apiUrl": "https://faith-server-mainnet.vercel.app",
     "adminUrl": "https://faith-admin-mainnet.vercel.app"
-  }
+  },
+  "tournamentHosting": "ADMIN_ONLY",
+  "tournamentDefaultFeeBps": 200
 }

@@ -414,11 +414,11 @@ export function CompetitionScreen() {
         </>
       )}
 
-      <Text style={styles.footnote}>
+      {config && <Text style={styles.footnote}>
         {cluster === "mainnet-beta"
-          ? "Paid competitions are disabled."
+          ? (config.paidEnabled ? "Paid entries use real SOL." : "Paid competitions are currently paused.")
           : `This uses ${cluster} test SOL, which has no real-world value.`}
-      </Text>
+      </Text>}
 
       {isAdmin && (stillOpen || competition.state === "AWAITING_FUNDING") && (
         <View style={styles.admin}>

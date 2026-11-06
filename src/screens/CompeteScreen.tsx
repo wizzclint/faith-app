@@ -321,7 +321,7 @@ export function CompeteScreen() {
           {config && (
             <Text style={styles.footnote}>
               {config.cluster === "mainnet-beta"
-                ? "Paid competitions are disabled."
+                ? (config.paidEnabled ? "Paid entries use real SOL." : "Paid competitions are currently paused.")
                 : `Stakes, entry fees and prizes use ${config.cluster} test SOL, which has no real-world value. Winning is never guaranteed.`}
             </Text>
           )}

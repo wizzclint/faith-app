@@ -1,5 +1,6 @@
 import { createAudioPlayer } from "expo-audio";
 import { useSettingsStore } from "../../store/settingsStore";
+import { bundledAudioSource } from "./bundledAudio";
 
 /**
  * Every sound effect FAITH RUN plays. All placeholder CC0 assets (see
@@ -12,21 +13,38 @@ import { useSettingsStore } from "../../store/settingsStore";
  * good enough for a first pass, revisit with a small player pool per sound
  * if that turns out to feel wrong in practice.
  */
-const players = {
-  jump: createAudioPlayer(require("../../../assets/audio/jump.mp3")),
-  slide: createAudioPlayer(require("../../../assets/audio/slide.mp3")),
-  coin: createAudioPlayer(require("../../../assets/audio/coin.mp3")),
-  powerUp: createAudioPlayer(require("../../../assets/audio/powerup.mp3")),
-  collision: createAudioPlayer(require("../../../assets/audio/collision.mp3")),
-  combo: createAudioPlayer(require("../../../assets/audio/combo.mp3")),
-  gameOver: createAudioPlayer(require("../../../assets/audio/gameOver.mp3")),
-  uiTap: createAudioPlayer(require("../../../assets/audio/uiTap.mp3")),
+const sources = {
+  jump: require("../../../assets/audio/jump.mp3"),
+  slide: require("../../../assets/audio/slide.mp3"),
+  coin: require("../../../assets/audio/coin.mp3"),
+  powerUp: require("../../../assets/audio/powerup.mp3"),
+  collision: require("../../../assets/audio/collision.mp3"),
+  combo: require("../../../assets/audio/combo.mp3"),
+  gameOver: require("../../../assets/audio/gameOver.mp3"),
+  uiTap: require("../../../assets/audio/uiTap.mp3"),
 };
+type Sound = keyof typeof sources;
+const players = new Map<Sound, ReturnType<typeof createAudioPlayer>>();
+let loading: Promise<void> | null = null;
 
-function play(player: (typeof players)[keyof typeof players]) {
+export function prepareGameSounds(): Promise<void> {
+  if (!loading) loading = Promise.all(Object.entries(sources).map(async ([name, asset]) => {
+    try {
+      const source = await bundledAudioSource(asset);
+      players.set(name as Sound, createAudioPlayer(source));
+    } catch {
+      // A missing sound never prevents a run from starting.
+    }
+  })).then(() => {});
+  return loading;
+}
+
+function play(name: Sound) {
   if (!useSettingsStore.getState().soundEnabled) return;
+  const player = players.get(name);
+  if (!player) { void prepareGameSounds(); return; }
   try {
-    player.seekTo(0);
+    void player.seekTo(0).catch(() => {});
     player.play();
   } catch {
     // Non-fatal — a missing/broken player should never take gameplay down with it.
@@ -34,12 +52,12 @@ function play(player: (typeof players)[keyof typeof players]) {
 }
 
 export const soundManager = {
-  playJump: () => play(players.jump),
-  playSlide: () => play(players.slide),
-  playCoin: () => play(players.coin),
-  playPowerUp: () => play(players.powerUp),
-  playCollision: () => play(players.collision),
-  playCombo: () => play(players.combo),
-  playGameOver: () => play(players.gameOver),
-  playUiTap: () => play(players.uiTap),
+  playJump: () => play("jump"),
+  playSlide: () => play("slide"),
+  playCoin: () => play("coin"),
+  playPowerUp: () => play("powerUp"),
+  playCollision: () => play("collision"),
+  playCombo: () => play("combo"),
+  playGameOver: () => play("gameOver"),
+  playUiTap: () => play("uiTap"),
 };

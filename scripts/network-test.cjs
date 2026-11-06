@@ -30,7 +30,8 @@ function load(file, mocks, env = {}) {
       authorizedChain = request.chain;
       return { accounts: [{ address: Buffer.alloc(32, 1).toString("base64") }], auth_token: "test" };
     } });
-    assert.equal(authorizedChain, `solana:${cluster}`);
+    const walletChains = { "mainnet-beta": "solana:mainnet", devnet: "solana:devnet", testnet: "solana:testnet" };
+    assert.equal(authorizedChain, walletChains[cluster]);
   }
   assert.equal(resolveNetwork("mainnet-beta", "https://rpc.example.test").endpoint, "https://rpc.example.test");
   assert.throws(() => resolveNetwork("typo"), /Unsupported/);

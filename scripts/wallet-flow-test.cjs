@@ -21,7 +21,7 @@ function load(file, mocks) {
   vm.runInNewContext(js, { module, exports: module.exports, require: id => id in mocks ? mocks[id] : require(id), TextEncoder, Uint8Array, Buffer, console });
   return module.exports;
 }
-async function fixture({ cached = null, cancel = false, fail = false } = {}) {
+async function fixture({ cached = null, cancel = false, fail = false, authorizeWait = null } = {}) {
   const key = keyPair();
   const pubkey = bs58.encode(key.publicKey);
   const account = { address: "base64-address", publicKey: { toBase58: () => pubkey } };
@@ -47,7 +47,7 @@ async function fixture({ cached = null, cancel = false, fail = false } = {}) {
   const { useMobileWallet } = load("src/utils/useMobileWallet.tsx", {
     "react": { useCallback: f => f, useMemo: f => f() },
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": { transact: async f => { sessions++; return f(wallet); } },
-    "./useAuthorization": { useAuthorization: () => ({ authorizeSession: async () => account, authorizeSessionWithSignIn: async () => account, deauthorizeSession: async () => { deauthorized = true; } }) },
+    "./useAuthorization": { useAuthorization: () => ({ authorizeSession: async () => { if (authorizeWait) await authorizeWait; return account; }, authorizeSessionWithSignIn: async () => account, clearAuthorization: async () => { deauthorized = true; } }) },
     "../store/authStore": { useAuthStore: store }
   });
   return { hook: useMobileWallet(), store, counts: () => ({ verified, sessions, deauthorized, currentToken }), pubkey, storage };
@@ -59,7 +59,9 @@ async function fixture({ cached = null, cancel = false, fail = false } = {}) {
   assert.equal(f.counts().verified, 1, "connecting automatically verifies a real signature");
   assert.equal(f.store.getState().pubkey, f.pubkey);
   await f.hook.connect(); assert.equal(f.counts().verified, 1, "valid session is reused");
+  const sessionsBeforeDisconnect = f.counts().sessions;
   await f.hook.disconnect(); assert.equal(f.store.getState().token, null); assert.equal(f.counts().currentToken, null); assert.ok(f.counts().deauthorized);
+  assert.equal(f.counts().sessions, sessionsBeforeDisconnect, "disconnect must not open a wallet session");
   console.log("PASS automatic connect, signature extraction, duplicate connect, reuse, disconnect");
   f = await fixture({ cancel: true }); await f.hook.connect(); assert.equal(f.store.getState().status, "idle"); assert.equal(f.counts().verified, 0);
   console.log("PASS cancelled signing stays signed out and retryable");
@@ -73,4 +75,18 @@ async function fixture({ cached = null, cancel = false, fail = false } = {}) {
   await new Promise(r => setImmediate(r)); await f.store.getState().signOut(); resolveSignature(new Uint8Array(64)); await pending;
   assert.equal(f.store.getState().token, null); assert.equal(f.counts().verified, 0);
   console.log("PASS late signing cannot restore a disconnected session");
+  let finishAuthorization;
+  const authorizeWait = new Promise(resolve => finishAuthorization = resolve);
+  f = await fixture({ authorizeWait });
+  const connecting = f.hook.connect();
+  const disconnected = assert.rejects(connecting, /cancelled by disconnect/);
+  await new Promise(resolve => setImmediate(resolve));
+  await f.hook.disconnect();
+  finishAuthorization();
+  await disconnected;
+  assert.equal(f.store.getState().token, null);
+  assert.equal(f.counts().verified, 0);
+  await f.hook.connect();
+  assert.equal(f.counts().verified, 1, "a fresh connection works after disconnect");
+  console.log("PASS disconnect cancels unfinished connect and permits a fresh connection");
 })().catch(e => { console.error(e); process.exitCode = 1; });

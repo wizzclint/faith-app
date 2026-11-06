@@ -66,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token: null, userId: null, pubkey: null, status: "signing", error: null });
     try {
       const { message, nonce } = await api.challenge(pubkeyBase58);
+      if (revision !== authRevision) return;
       const messageBytes = new TextEncoder().encode(message);
       const signatureBytes = await signMessage(messageBytes);
       if (revision !== authRevision) return;

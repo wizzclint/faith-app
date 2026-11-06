@@ -6,12 +6,11 @@ import {
   AuthorizeAPI,
   AuthToken,
   Base64EncodedAddress,
-  DeauthorizeAPI,
   SignInPayloadWithRequiredFields,
   SignInPayload,
 } from "@solana-mobile/mobile-wallet-adapter-protocol";
 import { toUint8Array } from "js-base64";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { LEGAL_SITE } from "../config/links";
@@ -74,24 +73,34 @@ function cacheReviver(key: string, value: any) {
 }
 
 const AUTHORIZATION_STORAGE_KEY = "authorization-cache";
+let authorizationRevision = 0;
+let storageWrite: Promise<void> = Promise.resolve();
+
+function cancelledConnection() {
+  return new Error("Wallet connection cancelled by disconnect");
+}
+
+function saveAuthorization(auth: WalletAuthorization | null) {
+  // A late connect write must finish before disconnect removes the cache.
+  storageWrite = storageWrite.catch(() => {}).then(() => auth
+    ? AsyncStorage.setItem(AUTHORIZATION_STORAGE_KEY, JSON.stringify(auth))
+    : AsyncStorage.removeItem(AUTHORIZATION_STORAGE_KEY));
+  return storageWrite;
+}
 
 async function fetchAuthorization(): Promise<WalletAuthorization | null> {
+  const revision = authorizationRevision;
+  await storageWrite.catch(() => {});
   const cacheFetchResult = await AsyncStorage.getItem(
     AUTHORIZATION_STORAGE_KEY
   );
 
-  if (!cacheFetchResult) {
+  if (!cacheFetchResult || revision !== authorizationRevision) {
     return null;
   }
 
   // Return prior authorization, if found.
   return JSON.parse(cacheFetchResult, cacheReviver);
-}
-
-async function persistAuthorization(
-  auth: WalletAuthorization | null
-): Promise<void> {
-  await AsyncStorage.setItem(AUTHORIZATION_STORAGE_KEY, JSON.stringify(auth));
 }
 
 /**
@@ -114,25 +123,23 @@ export function useAuthorization() {
     queryKey: ["wallet-authorization"],
     queryFn: () => fetchAuthorization(),
   });
-  const { mutateAsync: setAuthorization } = useMutation({
-    mutationFn: persistAuthorization,
-    onSuccess: (_result, nextAuthorization) => {
-      queryClient.setQueryData(["wallet-authorization"], nextAuthorization);
-    },
-  });
 
   const handleAuthorizationResult = useCallback(
     async (
-      authorizationResult: AuthorizationResult
+      authorizationResult: AuthorizationResult,
+      revision: number,
     ): Promise<WalletAuthorization> => {
+      if (revision !== authorizationRevision) throw cancelledConnection();
       const nextAuthorization = getAuthorizationFromAuthorizationResult(
         authorizationResult,
         authorization?.selectedAccount
       );
-      await setAuthorization(nextAuthorization);
+      queryClient.setQueryData(["wallet-authorization"], nextAuthorization);
+      await saveAuthorization(nextAuthorization);
+      if (revision !== authorizationRevision) throw cancelledConnection();
       return nextAuthorization;
     },
-    [authorization]
+    [authorization, queryClient]
   );
   /**
    * Authorizes with the saved token when there is one, so the wallet can skip
@@ -142,9 +149,11 @@ export function useAuthorization() {
    */
   const authorizeWithFallback = useCallback(
     async (wallet: AuthorizeAPI, signInPayload?: SignInPayload) => {
+      const revision = authorizationRevision;
+      const chain: `solana:${string}` = selectedCluster.network === "mainnet-beta" ? "solana:mainnet" : `solana:${selectedCluster.network}`;
       const request = {
         identity: APP_IDENTITY,
-        chain: `solana:${selectedCluster.network}`,
+        chain,
         ...(signInPayload ? { sign_in_payload: signInPayload } : {}),
       } as const;
       const savedToken = authorization?.authToken;
@@ -152,6 +161,7 @@ export function useAuthorization() {
       try {
         return await wallet.authorize({ ...request, auth_token: savedToken });
       } catch {
+        if (revision !== authorizationRevision) throw cancelledConnection();
         return wallet.authorize(request);
       }
     },
@@ -159,39 +169,38 @@ export function useAuthorization() {
   );
   const authorizeSession = useCallback(
     async (wallet: AuthorizeAPI) => {
+      const revision = authorizationRevision;
       const authorizationResult = await authorizeWithFallback(wallet);
-      return (await handleAuthorizationResult(authorizationResult))
+      return (await handleAuthorizationResult(authorizationResult, revision))
         .selectedAccount;
     },
     [authorizeWithFallback, handleAuthorizationResult]
   );
   const authorizeSessionWithSignIn = useCallback(
     async (wallet: AuthorizeAPI, signInPayload: SignInPayload) => {
+      const revision = authorizationRevision;
       const authorizationResult = await authorizeWithFallback(wallet, signInPayload);
-      return (await handleAuthorizationResult(authorizationResult))
+      return (await handleAuthorizationResult(authorizationResult, revision))
         .selectedAccount;
     },
     [authorizeWithFallback, handleAuthorizationResult]
   );
-  const deauthorizeSession = useCallback(
-    async (wallet: DeauthorizeAPI) => {
-      if (authorization?.authToken == null) {
-        return;
-      }
-      await wallet.deauthorize({ auth_token: authorization.authToken });
-      await setAuthorization(null);
-    },
-    [authorization]
-  );
+  const clearAuthorization = useCallback(async () => {
+    authorizationRevision += 1;
+    const clearing = saveAuthorization(null);
+    await queryClient.cancelQueries({ queryKey: ["wallet-authorization"] });
+    queryClient.setQueryData(["wallet-authorization"], null);
+    await clearing;
+  }, [queryClient]);
   return useMemo(
     () => ({
       accounts: authorization?.accounts ?? null,
       authorizeSession,
       authorizeSessionWithSignIn,
-      deauthorizeSession,
+      clearAuthorization,
       selectedAccount: authorization?.selectedAccount ?? null,
       isLoading,
     }),
-    [authorization, authorizeSession, authorizeSessionWithSignIn, deauthorizeSession, isLoading]
+    [authorization, authorizeSession, authorizeSessionWithSignIn, clearAuthorization, isLoading]
   );
 }

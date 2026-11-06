@@ -10,19 +10,24 @@ import { SignInPayload } from "@solana-mobile/mobile-wallet-adapter-protocol";
 import { useAuthStore } from "../store/authStore";
 
 let connectionInFlight: Promise<Account> | null = null;
+let connectionRevision = 0;
 
 export function useMobileWallet() {
-  const { authorizeSessionWithSignIn, authorizeSession, deauthorizeSession } =
+  const { authorizeSessionWithSignIn, authorizeSession, clearAuthorization } =
     useAuthorization();
 
   const connect = useCallback(async (): Promise<Account> => {
     if (connectionInFlight) return connectionInFlight;
-    connectionInFlight = transact(async (wallet) => {
+    const revision = connectionRevision;
+    const pending = transact(async (wallet) => {
       await useAuthStore.getState().load();
+      if (revision !== connectionRevision) throw new Error("Wallet connection cancelled by disconnect");
       const account = await authorizeSession(wallet);
+      if (revision !== connectionRevision) throw new Error("Wallet connection cancelled by disconnect");
       const pubkey = account.publicKey.toBase58();
       const auth = useAuthStore.getState();
       if (auth.pubkey !== pubkey) await auth.signOut();
+      if (revision !== connectionRevision) throw new Error("Wallet connection cancelled by disconnect");
       if (useAuthStore.getState().status !== "authenticated") {
         await useAuthStore.getState().signIn(pubkey, async (message) => {
           const signed = await wallet.signMessages({
@@ -32,9 +37,11 @@ export function useMobileWallet() {
           return signed[0].slice(-64);
         });
       }
+      if (revision !== connectionRevision) throw new Error("Wallet connection cancelled by disconnect");
       return account;
-    }).then(account => account).finally(() => { connectionInFlight = null; });
-    return connectionInFlight;
+    }).then(account => account).finally(() => { if (connectionInFlight === pending) connectionInFlight = null; });
+    connectionInFlight = pending;
+    return pending;
   }, [authorizeSession]);
 
   const signIn = useCallback(
@@ -47,11 +54,11 @@ export function useMobileWallet() {
   );
 
   const disconnect = useCallback(async (): Promise<void> => {
-    await transact(async (wallet) => {
-      await deauthorizeSession(wallet);
-    });
-    await useAuthStore.getState().signOut();
-  }, [deauthorizeSession]);
+    // Forget locally even when Phantom is unavailable or its session is stuck.
+    connectionRevision += 1;
+    connectionInFlight = null;
+    await Promise.all([clearAuthorization(), useAuthStore.getState().signOut()]);
+  }, [clearAuthorization]);
 
   const signAndSendTransaction = useCallback(
     async (

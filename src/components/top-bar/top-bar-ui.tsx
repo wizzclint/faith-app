@@ -131,7 +131,6 @@ export function TopBarWalletMenu() {
       <Menu.Item
         onPress={async () => {
           closeMenu();
-          // Backing out in the wallet just leaves it connected.
           await disconnect().catch(() => {});
         }}
         title="Disconnect"

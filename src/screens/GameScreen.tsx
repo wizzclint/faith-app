@@ -8,7 +8,7 @@ import { GameOverOverlay } from "../components/game/GameOverOverlay";
 import { PauseOverlay } from "../components/game/PauseOverlay";
 import { colors } from "../design/colors";
 import { useGameMusic } from "../game/audio/useGameMusic";
-import { soundManager } from "../game/audio/soundManager";
+import { prepareGameSounds, soundManager } from "../game/audio/soundManager";
 import { LANE_COUNT, SWIPE_THRESHOLD_PX } from "../game/constants";
 import { useRunnerEngine } from "../game/engine/useRunnerEngine";
 import { api, ApiError } from "../services/api/client";
@@ -84,6 +84,9 @@ export function GameScreen() {
   const backendSessionId = useRef<string | null>(null);
   /** A finished competition run that hasn't reached the server yet, kept so it can be sent again. */
   const unsentRun = useRef<{ sessionId: string; run: RunResult } | null>(null);
+  const attemptRevision = useRef(0);
+  const screenFocused = useRef(focused);
+  screenFocused.current = focused;
 
   const attemptsPerPlayer = competition?.attemptsPerPlayer ?? 3;
   const thisRunLabel = runInfo ? runLabel(runInfo.attempt, attemptsPerPlayer) : "RUN";
@@ -96,6 +99,7 @@ export function GameScreen() {
    * server has issued it.
    */
   const startAttempt = async () => {
+    const revision = ++attemptRevision.current;
     backendSessionId.current = null;
     unsentRun.current = null;
     setResultNote(null);
@@ -110,7 +114,7 @@ export function GameScreen() {
       api
         .createSession()
         .then(({ sessionId }) => {
-          backendSessionId.current = sessionId;
+          if (revision === attemptRevision.current) backendSessionId.current = sessionId;
         })
         .catch(() => {
           // Server unreachable — local play continues regardless.
@@ -122,12 +126,14 @@ export function GameScreen() {
     setStarting(true);
     try {
       const run = await api.createCompetitionSession(competition.competitionId);
+      if (revision !== attemptRevision.current || !screenFocused.current) return;
       backendSessionId.current = run.sessionId;
       setRunInfo({ attempt: run.attempt, attemptsAllowed: run.attemptsAllowed });
       setStarting(false);
       startRun();
       engine.start();
     } catch (err) {
+      if (revision !== attemptRevision.current || !screenFocused.current) return;
       Alert.alert(
         "Can't start this run",
         err instanceof ApiError ? err.message : "Can't reach the FAITH servers right now.",
@@ -194,8 +200,9 @@ export function GameScreen() {
   }, [loadBestScore]);
 
   useEffect(() => {
+    void prepareGameSounds();
     startAttempt();
-    return () => engine.stop();
+    return () => { attemptRevision.current += 1; engine.stop(); };
     // Mount-only: restarts are triggered explicitly via "Play Again".
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -247,6 +254,7 @@ export function GameScreen() {
 
   /** Leaving the result card. An unsent competition score would be lost, so that needs a yes. */
   const handleHome = () => {
+    engine.stop();
     if (competition && submission === "failed") {
       Alert.alert(
         "Leave without sending?",
@@ -294,7 +302,7 @@ export function GameScreen() {
    */
   const handleExitFromPause = () => {
     if (!competition) {
-      setPaused(false);
+      engine.stop();
       navigation.goBack();
       return;
     }
